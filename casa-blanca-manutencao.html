@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Blanca Imobiliária — Gestão de Manutenção</title>
+<style>
+  :root{
+    --brand:#0f766e;
+    --brand-dark:#0b4f4a;
+    --brand-light:#ccfbf1;
+    --bg:#f1f5f9;
+    --card-bg:#ffffff;
+    --text:#1e293b;
+    --muted:#64748b;
+    --border:#e2e8f0;
+    --urgente:#dc2626;
+    --urgente-bg:#fee2e2;
+    --alta:#ea580c;
+    --alta-bg:#ffedd5;
+    --normal:#16a34a;
+    --normal-bg:#dcfce7;
+    --st-aguardando:#b45309;
+    --st-aguardando-bg:#fef3c7;
+    --st-enviado:#1d4ed8;
+    --st-enviado-bg:#dbeafe;
+    --st-andamento:#7c3aed;
+    --st-andamento-bg:#ede9fe;
+    --st-concluido:#15803d;
+    --st-concluido-bg:#dcfce7;
+    --radius:10px;
+    --shadow:0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header.topbar{background:linear-gradient(135deg,var(--brand-dark),var(--brand));color:#fff;padding:18px 28px;box-shadow:var(--shadow);}
+  .topbar-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;max-width:1300px;margin:0 auto;}
+  .brand h1{margin:0;font-size:20px;font-weight:700;}
+  .brand p{margin:2px 0 0;font-size:13px;opacity:.85;}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;}
+  .stat-chip{background:rgba(255,255,255,.15);border-radius:999px;padding:6px 14px;font-size:12.5px;display:flex;gap:6px;align-items:center;}
+  .stat-chip b{font-size:14px;}
+  .topbar-actions{display:flex;gap:8px;}
+  .icon-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;}
+  .icon-btn:hover{background:rgba(255,255,255,.25);}
+
+  nav.tabs{display:flex;gap:6px;max-width:1300px;margin:16px auto 0;padding:0 28px;flex-wrap:wrap;}
+  .tab-btn{background:#fff;border:1px solid var(--border);color:var(--muted);padding:10px 18px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600;transition:.15s;}
+  .tab-btn:hover{border-color:var(--brand);color:var(--brand);}
+  .tab-btn.active{background:var(--brand);border-color:var(--brand);color:#fff;}
+
+  main{max-width:1300px;margin:0 auto;padding:20px 28px 60px;}
+  section.tab-panel{display:none;}
+  section.tab-panel.active{display:block;}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;background:#fff;padding:14px;border-radius:var(--radius);box-shadow:var(--shadow);}
+  .toolbar input[type=text], .toolbar select{padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:var(--text);}
+  .toolbar input[type=text]{flex:1;min-width:220px;}
+  .btn{background:var(--brand);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn:hover{background:var(--brand-dark);}
+  .btn.secondary{background:#fff;color:var(--brand);border:1px solid var(--brand);}
+  .btn.secondary:hover{background:var(--brand-light);}
+  .btn.danger{background:#fff;color:var(--urgente);border:1px solid var(--urgente);}
+  .btn.danger:hover{background:var(--urgente-bg);}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  .btn.small{padding:6px 12px;font-size:12.5px;}
+
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;}
+  .card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-left:6px solid var(--normal);cursor:pointer;transition:.15s;}
+  .card:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,.1);}
+  .card.prio-Urgente{border-left-color:var(--urgente);}
+  .card.prio-Alta{border-left-color:var(--alta);}
+  .card.prio-Normal{border-left-color:var(--normal);}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .protocolo{font-family:"SFMono-Regular",Consolas,monospace;font-weight:700;font-size:14px;color:var(--brand-dark);}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+  .badge.prio-Urgente{background:var(--urgente-bg);color:var(--urgente);}
+  .badge.prio-Alta{background:var(--alta-bg);color:var(--alta);}
+  .badge.prio-Normal{background:var(--normal-bg);color:var(--normal);}
+  .badge.st-Aguardando{background:var(--st-aguardando-bg);color:var(--st-aguardando);}
+  .badge.st-Enviado{background:var(--st-enviado-bg);color:var(--st-enviado);}
+  .badge.st-Andamento{background:var(--st-andamento-bg);color:var(--st-andamento);}
+  .badge.st-Concluido{background:var(--st-concluido-bg);color:var(--st-concluido);}
+  .card h3{margin:10px 0 2px;font-size:15.5px;}
+  .card .muted{color:var(--muted);font-size:13px;margin:2px 0;}
+  .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:var(--muted);}
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted);background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);}
+  .empty-state .big{font-size:42px;margin-bottom:10px;}
+
+  form .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#fff;padding:20px;border-radius:var(--radius);box-shadow:var(--shadow);}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:13px;font-weight:600;color:var(--text);}
+  .field .hint{font-size:12px;color:var(--muted);font-weight:400;}
+  .field input, .field select, .field textarea{padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text);}
+  .field textarea{resize:vertical;min-height:70px;}
+  .field.internal textarea{background:#fffbeb;border-color:#fcd34d;}
+  .form-actions{grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;}
+  .success-banner{background:var(--normal-bg);border:1px solid var(--normal);color:#14532d;padding:14px 18px;border-radius:var(--radius);margin-bottom:16px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .success-banner.show{display:flex;}
+
+  .templates-grid{display:flex;flex-direction:column;gap:16px;}
+  .tpl-card{background:#fff;padding:16px;border-radius:var(--radius);box-shadow:var(--shadow);}
+  .tpl-card h3{margin:0 0 4px;font-size:15.5px;}
+  .tpl-card .muted{color:var(--muted);font-size:13px;margin:0 0 10px;}
+  .tpl-card textarea{width:100%;min-height:150px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13.5px;line-height:1.5;}
+  .tpl-actions{margin-top:8px;display:flex;gap:8px;}
+  .legend{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;font-size:13px;color:var(--muted);}
+  .legend code{background:var(--bg);padding:2px 6px;border-radius:4px;color:var(--brand-dark);}
+
+  .flow-steps{display:flex;flex-direction:column;gap:0;}
+  .flow-step{display:flex;gap:16px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:12px;}
+  .flow-num{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;}
+  .flow-step h4{margin:2px 0 4px;font-size:15px;}
+  .flow-step p{margin:0;color:var(--muted);font-size:13.5px;}
+  .flow-status-tag{display:inline-block;margin-top:6px;font-size:11.5px;background:var(--bg);color:var(--brand-dark);padding:2px 8px;border-radius:6px;font-weight:600;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;z-index:100;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:var(--radius);max-width:640px;width:100%;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.25);}
+  .modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  .modal-header h2{margin:0;font-size:18px;}
+  .close-x{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;font-size:13.5px;margin-bottom:14px;}
+  .detail-grid .dt-label{color:var(--muted);font-size:12px;}
+  .detail-grid .dt-val{font-weight:600;}
+  .internal-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;}
+  .status-row{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .msg-btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .msg-preview{display:none;margin-top:10px;}
+  .msg-preview.show{display:block;}
+  .msg-preview textarea{width:100%;min-height:170px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;}
+  .msg-preview .tpl-actions{margin-top:8px;}
+  .history-list{list-style:none;padding:0;margin:0;font-size:12.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;}
+  .history-list li{padding:3px 0;}
+  .modal-footer{display:flex;justify-content:space-between;margin-top:16px;gap:8px;flex-wrap:wrap;}
+
+  .backup-note{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5;}
+
+  .group-heading{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:15px;font-weight:700;color:var(--text);}
+  .group-heading.concluidas{cursor:pointer;color:var(--muted);margin-top:26px;user-select:none;}
+  .group-heading.concluidas:hover{color:var(--brand);}
+
+  .acomp-section h3{font-size:14.5px;margin:16px 0 8px;}
+  .acomp-list{list-style:none;margin:0 0 8px;padding:0;max-height:220px;overflow-y:auto;}
+  .acomp-list li{background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:13px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start;}
+  .acomp-list .acomp-date{font-weight:700;color:var(--brand-dark);white-space:nowrap;font-size:12px;margin-right:8px;}
+  .acomp-list .acomp-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;flex:0 0 auto;}
+  .acomp-list .acomp-del:hover{color:var(--urgente);}
+  .acomp-empty{font-size:12.5px;color:var(--muted);margin:0 0 8px;}
+  .acomp-add-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .acomp-add-row input[type=date]{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;}
+  .acomp-add-row input[type=text]{flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;}
+
+  #printArea{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{display:block;position:absolute;top:0;left:0;width:100%;padding:24px;}
+    #printArea h2{margin-top:0;}
+    #printArea .print-row{margin:6px 0;font-size:14px;}
+    #printArea .print-label{color:#64748b;font-size:12px;}
+    #printArea ul{padding-left:18px;}
+  }
+
+  @media (max-width:700px){
+    form .form-grid{grid-template-columns:1fr;}
+    .detail-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <h1>🏢 Casa Blanca Imobiliária</h1>
+      <p>Sistema de Gestão de Manutenção · Iguatu-CE</p>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="topbar-actions">
+      <span class="stat-chip" id="cloudChip">⚪ Nuvem: desligada</span>
+      <button class="icon-btn" onclick="openBackup()">⚙️ Backup</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="painel" onclick="switchTab('painel')">📋 Painel de Demandas</button>
+  <button class="tab-btn" data-tab="nova" onclick="switchTab('nova')">➕ Nova Demanda</button>
+  <button class="tab-btn" data-tab="templates" onclick="switchTab('templates')">💬 Modelos de Mensagem</button>
+  <button class="tab-btn" data-tab="fluxo" onclick="switchTab('fluxo')">🔄 Fluxo de Atendimento</button>
+</nav>
+
+<main>
+  <!-- PAINEL -->
+  <section class="tab-panel active" id="tab-painel">
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Buscar por protocolo, nome ou endereço..." oninput="renderPainel()">
+      <select id="filterStatus" onchange="renderPainel()">
+        <option value="">Todos os status</option>
+        <option>Aguardando orçamento</option>
+        <option>Orçamento enviado</option>
+        <option>Em andamento</option>
+        <option>Concluído</option>
+      </select>
+      <select id="filterPrioridade" onchange="renderPainel()">
+        <option value="">Todas as prioridades</option>
+        <option>Urgente</option>
+        <option>Alta</option>
+        <option>Normal</option>
+      </select>
+      <button class="btn" onclick="switchTab('nova')">+ Nova Demanda</button>
+    </div>
+    <div id="cardsContainer"></div>
+  </section>
+
+  <!-- NOVA DEMANDA -->
+  <section class="tab-panel" id="tab-nova">
+    <div class="success-banner" id="successBanner">
+      <span id="successText"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn small" id="successGoDetail">Ver detalhes</button>
+        <button class="btn secondary small" onclick="dismissSuccess()">Fechar</button>
+      </div>
+    </div>
+    <form class="form-grid" id="demandForm" onsubmit="handleSubmitDemand(event)">
+      <input type="hidden" id="editingId" value="">
+      <div class="field full">
+        <label>Imóvel (endereço / código) *</label>
+        <input type="text" id="f_imovel" required placeholder="Ex: Rua José de Alencar, 123 - Centro">
+      </div>
+      <div class="field">
+        <label>Inquilino - Nome *</label>
+        <input type="text" id="f_inquilinoNome" required>
+      </div>
+      <div class="field">
+        <label>Inquilino - Telefone (WhatsApp) *</label>
+        <input type="text" id="f_inquilinoTelefone" required placeholder="(88) 9 9999-9999">
+      </div>
+      <div class="field">
+        <label>Proprietário - Nome</label>
+        <input type="text" id="f_proprietarioNome">
+      </div>
+      <div class="field">
+        <label>Proprietário - Telefone (WhatsApp)</label>
+        <input type="text" id="f_proprietarioTelefone" placeholder="(88) 9 9999-9999">
+      </div>
+      <div class="field">
+        <label>Tipo de serviço *</label>
+        <select id="f_tipoServico" required>
+          <option value="">Selecione...</option>
+          <option>Elétrica</option>
+          <option>Hidráulica</option>
+          <option>Pintura / Acabamento</option>
+          <option>Alvenaria / Estrutural</option>
+          <option>Ar-condicionado</option>
+          <option>Chaveiro / Fechadura</option>
+          <option>Jardinagem</option>
+          <option>Limpeza</option>
+          <option>Elevador</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Prioridade *</label>
+        <select id="f_prioridade" required>
+          <option value="Normal">Normal</option>
+          <option value="Alta">Alta</option>
+          <option value="Urgente">Urgente</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Descrição *</label>
+        <textarea id="f_descricao" required placeholder="Descreva o problema relatado..."></textarea>
+      </div>
+      <div class="field">
+        <label>Prestador responsável</label>
+        <input type="text" id="f_prestador" placeholder="A definir">
+      </div>
+      <div class="field internal full">
+        <label>Observações internas <span class="hint">(uso interno — nunca entra nas mensagens ao cliente)</span></label>
+        <textarea id="f_observacoes" placeholder="Anotações internas da equipe..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" onclick="resetForm()">Cancelar</button>
+        <button type="submit" class="btn" id="submitBtn">Registrar Demanda</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- TEMPLATES -->
+  <section class="tab-panel" id="tab-templates">
+    <div class="legend">
+      Variáveis disponíveis: <code>{{protocolo}}</code> <code>{{inquilino}}</code> <code>{{proprietario}}</code>
+      <code>{{imovel}}</code> <code>{{tipoServico}}</code> <code>{{descricao}}</code> <code>{{prestador}}</code>
+      <code>{{valorOrcamento}}</code> <code>{{prioridade}}</code> <code>{{data}}</code>
+    </div>
+    <br>
+    <div class="templates-grid" id="templatesContainer"></div>
+  </section>
+
+  <!-- FLUXO -->
+  <section class="tab-panel" id="tab-fluxo">
+    <div class="flow-steps">
+      <div class="flow-step"><div class="flow-num">1</div><div>
+        <h4>Recebimento da solicitação</h4>
+        <p>Registrar a demanda no painel (aba "Nova Demanda"). O protocolo é gerado automaticamente no formato CB-MMAA-XXXX.</p>
+      </div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div>
+        <h4>Classificação de prioridade</h4>
+        <p>Definir se o caso é Urgente, Alta ou Normal conforme a gravidade e o risco ao imóvel/morador.</p>
+      </div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div>
+        <h4>Confirmação ao inquilino</h4>
+        <p>Enviar mensagem de confirmação via WhatsApp informando o número do protocolo.</p>
+        <span class="flow-status-tag">Status: Aguardando orçamento</span>
+      </div></div>
+      <div class="flow-step"><div class="flow-num">4</div><div>
+        <h4>Comunicado ao proprietário</h4>
+        <p>Informar o proprietário sobre a abertura do chamado e o serviço solicitado.</p>
+      </div></div>
+      <div class="flow-step"><div class="flow-num">5</div><div>
+        <h4>Vistoria e orçamento</h4>
+        <p>Prestador realiza a vistoria/diagnóstico. Orçamento é elaborado e enviado ao proprietário para aprovação.</p>
+        <span class="flow-status-tag">Status: Orçamento enviado</span>
+      </div></div>
+      <div class="flow-step"><div class="flow-num">6</div><div>
+        <h4>Execução do serviço</h4>
+        <p>Após aprovação, o prestador executa o serviço. Enviar atualizações de andamento quando necessário.</p>
+        <span class="flow-status-tag">Status: Em andamento</span>
+      </div></div>
+      <div class="flow-step"><div class="flow-num">7</div><div>
+        <h4>Conclusão e confirmação</h4>
+        <p>Serviço finalizado: enviar mensagem de conclusão ao inquilino/proprietário e arquivar o protocolo.</p>
+        <span class="flow-status-tag">Status: Concluído</span>
+      </div></div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL DETALHE -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalProtocolo"></h2>
+      <button class="close-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="detail-grid" id="modalDetailGrid"></div>
+    <div class="internal-box" id="modalInternalBox"></div>
+    <div class="status-row">
+      <label style="font-size:13px;font-weight:600;">Status:</label>
+      <select id="modalStatusSelect" onchange="handleStatusChange()">
+        <option>Aguardando orçamento</option>
+        <option>Orçamento enviado</option>
+        <option>Em andamento</option>
+        <option>Concluído</option>
+      </select>
+      <label style="font-size:13px;font-weight:600;margin-left:12px;">Valor orçamento:</label>
+      <input type="text" id="modalValorOrcamento" placeholder="R$ 0,00" style="width:120px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;" onchange="handleValorChange()">
+    </div>
+    <div class="msg-btns" id="modalMsgBtns"></div>
+    <div class="msg-preview" id="modalMsgPreview">
+      <textarea id="modalMsgText" readonly></textarea>
+      <div class="tpl-actions">
+        <button class="btn small" onclick="copyMsg()">📋 Copiar mensagem</button>
+        <button class="btn secondary small" onclick="openWhatsAppFromModal()">📲 Abrir no WhatsApp</button>
+      </div>
+    </div>
+    <div class="acomp-section">
+      <h3>📌 Acompanhamento do atendimento</h3>
+      <ul class="acomp-list" id="modalAcompanhamento"></ul>
+      <div class="acomp-add-row">
+        <input type="date" id="acompData">
+        <input type="text" id="acompTexto" placeholder="Ex: Orçamento enviado ao proprietário">
+        <button class="btn small" onclick="addAcompanhamento()">+ Adicionar</button>
+      </div>
+    </div>
+    <ul class="history-list" id="modalHistory"></ul>
+    <div class="modal-footer">
+      <button class="btn danger small" onclick="handleDelete()">🗑 Excluir demanda</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost small" onclick="openPrintView()">🖨️ Print / Resumo</button>
+        <button class="btn secondary small" onclick="handleEditFromModal()">✏️ Editar demanda</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<!-- MODAL BACKUP -->
+<div class="modal-overlay" id="backupOverlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h2>⚙️ Backup e Sincronização</h2>
+      <button class="close-x" onclick="closeBackup()">✕</button>
+    </div>
+
+    <h3 style="font-size:14.5px;margin:0 0 6px;">☁️ Sincronização entre computadores</h3>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Cole a URL do Web App e a senha (token) geradas no Google Apps Script (veja o guia enviado). Configure a mesma URL e senha em todos os computadores da imobiliária.</p>
+    <div class="field" style="margin-bottom:8px;">
+      <label>URL do Web App</label>
+      <input type="text" id="cloudUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <div class="field" style="margin-bottom:8px;">
+      <label>Senha (token)</label>
+      <input type="text" id="cloudToken" placeholder="Sua senha combinada">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
+      <button class="btn small" onclick="testCloudConnection()">Testar conexão</button>
+      <button class="btn secondary small" onclick="saveCloudConfigAndSync()">Salvar e sincronizar</button>
+      <button class="btn ghost small" onclick="disconnectCloud()">Desligar nuvem</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);" id="cloudStatusText"></p>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+    <h3 style="font-size:14.5px;margin:0 0 6px;">💾 Backup automático neste computador</h3>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;" id="backupFileDesc">Nenhum arquivo vinculado ainda.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn small" id="linkBackupBtn" onclick="linkBackupFile()">🔗 Vincular arquivo de backup</button>
+      <button class="btn ghost small" id="reauthorizeBtn" style="display:none;" onclick="reauthorizeBackupFile()">🔓 Reautorizar backup automático</button>
+      <button class="btn ghost small" id="unlinkBackupBtn" style="display:none;" onclick="unlinkBackupFile()">Desvincular</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px;">Funciona apenas no Chrome/Edge, no computador. Depois de vincular, o arquivo é atualizado sozinho a cada alteração.</p>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+    <h3 style="font-size:14.5px;margin:0 0 6px;">📄 Backup manual</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn" onclick="exportData()">⬇️ Exportar dados (JSON)</button>
+      <button class="btn secondary" onclick="document.getElementById('importFile').click()">⬆️ Importar dados (JSON)</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+    </div>
+    <p class="backup-note">
+      Dica: salve este arquivo .html em uma pasta fixa do computador (ex: Documentos) e sempre abra a partir dela no navegador.
+    </p>
+  </div>
+</div>
+
+<script>
+/* ==================== ESTADO ==================== */
+const STORAGE_KEY = 'cb_manutencao_demandas_v1';
+const TEMPLATES_KEY = 'cb_manutencao_templates_v1';
+let storageAvailable = true;
+
+function testStorage(){
+  try{
+    const k='__cb_test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k);
+    return true;
+  }catch(e){ return false; }
+}
+storageAvailable = testStorage();
+
+let demands = [];
+let templates = {};
+let currentEditId = null;
+let currentModalId = null;
+let currentModalTemplateKey = null;
+
+const DEFAULT_TEMPLATES = {
+  confirmacao: {
+    label: 'Confirmação ao inquilino (com protocolo)',
+    text: `Olá, {{inquilino}}! 👋
+Aqui é da *Casa Blanca Imobiliária*.
+
+Confirmamos o registro da sua solicitação de manutenção:
+
+📋 Protocolo: *{{protocolo}}*
+🏠 Imóvel: {{imovel}}
+🔧 Serviço: {{tipoServico}}
+📝 Descrição: {{descricao}}
+📅 Data do registro: {{data}}
+
+Em breve entraremos em contato com novidades sobre o andamento. Guarde o número do protocolo para consultas futuras.
+
+Qualquer dúvida, estamos à disposição!`
+  },
+  proprietario: {
+    label: 'Comunicado ao proprietário',
+    text: `Olá, {{proprietario}}! 👋
+Aqui é da *Casa Blanca Imobiliária*.
+
+Informamos a abertura de uma solicitação de manutenção para o seu imóvel:
+
+📋 Protocolo: *{{protocolo}}*
+🏠 Imóvel: {{imovel}}
+🔧 Serviço: {{tipoServico}}
+📝 Relato do inquilino: {{descricao}}
+⚠️ Prioridade: {{prioridade}}
+
+Assim que recebermos o orçamento do prestador, enviaremos para sua aprovação. Qualquer dúvida, estamos à disposição.`
+  },
+  orcamento: {
+    label: 'Envio de orçamento',
+    text: `Olá! Aqui é da *Casa Blanca Imobiliária*.
+
+Segue o orçamento referente ao protocolo *{{protocolo}}*:
+
+🏠 Imóvel: {{imovel}}
+🔧 Serviço: {{tipoServico}}
+👷 Prestador: {{prestador}}
+💰 Valor do orçamento: {{valorOrcamento}}
+
+Aguardamos sua aprovação para darmos andamento à execução do serviço. Qualquer dúvida, estamos à disposição.`
+  },
+  andamento: {
+    label: 'Atualização de andamento',
+    text: `Olá! Aqui é da *Casa Blanca Imobiliária*.
+
+Atualização sobre o protocolo *{{protocolo}}*:
+
+🏠 Imóvel: {{imovel}}
+🔧 Serviço: {{tipoServico}}
+👷 Prestador: {{prestador}}
+🚧 Status: em andamento
+
+Assim que o serviço for finalizado, entraremos em contato novamente. Qualquer dúvida, estamos à disposição.`
+  },
+  conclusao: {
+    label: 'Conclusão',
+    text: `Olá! Aqui é da *Casa Blanca Imobiliária*.
+
+Informamos que o serviço referente ao protocolo *{{protocolo}}* foi *concluído* ✅
+
+🏠 Imóvel: {{imovel}}
+🔧 Serviço: {{tipoServico}}
+
+Agradecemos a confiança! Qualquer necessidade, estamos sempre à disposição.`
+  }
+};
+
+function loadDemands(){
+  if(!storageAvailable) return [];
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveDemands(){
+  if(!storageAvailable) return;
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(demands)); }catch(e){}
+}
+function loadTemplates(){
+  let base = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+  if(!storageAvailable) return base;
+  try{
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      Object.keys(base).forEach(k=>{ if(saved[k] && saved[k].text) base[k].text = saved[k].text; });
+    }
+  }catch(e){}
+  return base;
+}
+function saveTemplates(){
+  if(!storageAvailable) return;
+  try{ localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates)); }catch(e){}
+}
+
+demands = loadDemands();
+templates = loadTemplates();
+
+/* ==================== HELPERS ==================== */
+function uid(){
+  return (crypto.randomUUID ? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2));
+}
+function pad(n,len){ return String(n).padStart(len,'0'); }
+function formatDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR');
+}
+function formatDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR')+' às '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function formatCurrency(v){
+  const n = parseFloat(String(v).replace(/[^\d,.-]/g,'').replace(',','.'));
+  if(isNaN(n)) return v || '[valor a definir]';
+  return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function statusClass(status){
+  switch(status){
+    case 'Aguardando orçamento': return 'st-Aguardando';
+    case 'Orçamento enviado': return 'st-Enviado';
+    case 'Em andamento': return 'st-Andamento';
+    case 'Concluído': return 'st-Concluido';
+    default: return '';
+  }
+}
+function generateProtocolo(date){
+  const mm = pad(date.getMonth()+1,2);
+  const aa = pad(date.getFullYear()%100,2);
+  const prefix = 'CB-'+mm+aa+'-';
+  let maxSeq = 0;
+  demands.forEach(d=>{
+    if(d.protocolo && d.protocolo.startsWith(prefix)){
+      const seq = parseInt(d.protocolo.split('-')[2],10);
+      if(!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    }
+  });
+  return prefix + pad(maxSeq+1,4);
+}
+function prioridadeRank(p){ return p==='Urgente'?0:(p==='Alta'?1:2); }
+
+/* ==================== TABS ==================== */
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='painel') renderPainel();
+  if(name==='templates') renderTemplates();
+}
+
+/* ==================== STATS ==================== */
+function renderStats(){
+  const total = demands.length;
+  const urgentesAbertas = demands.filter(d=>d.prioridade==='Urgente' && d.status!=='Concluído').length;
+  const aguardando = demands.filter(d=>d.status==='Aguardando orçamento').length;
+  const andamento = demands.filter(d=>d.status==='Em andamento').length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-chip">📋 Total <b>${total}</b></div>
+    <div class="stat-chip">🔴 Urgentes abertas <b>${urgentesAbertas}</b></div>
+    <div class="stat-chip">🟡 Aguard. orçamento <b>${aguardando}</b></div>
+    <div class="stat-chip">🟣 Em andamento <b>${andamento}</b></div>
+  `;
+}
+
+/* ==================== PAINEL ==================== */
+let concluidasExpanded = false;
+function toggleConcluidas(){
+  concluidasExpanded = !concluidasExpanded;
+  renderPainel();
+}
+function cardHtml(d){
+  return `
+    <div class="card prio-${d.prioridade}" onclick="openModal('${d.id}')">
+      <div class="card-top">
+        <span class="protocolo">${d.protocolo}</span>
+        <span class="badge prio-${d.prioridade}">${d.prioridade}</span>
+      </div>
+      <h3>${escapeHtml(d.imovel)}</h3>
+      <p class="muted">👤 ${escapeHtml(d.inquilinoNome)}</p>
+      <p class="muted">🔧 ${escapeHtml(d.tipoServico)}${d.prestador ? ' · 👷 '+escapeHtml(d.prestador) : ''}</p>
+      <div class="card-footer">
+        <span class="badge ${statusClass(d.status)}">${d.status}</span>
+        <span>${formatDate(d.createdAt)}</span>
+      </div>
+    </div>
+  `;
+}
+function renderPainel(){
+  renderStats();
+  const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  const fStatus = document.getElementById('filterStatus').value;
+  const fPrio = document.getElementById('filterPrioridade').value;
+
+  let list = demands.filter(d=>{
+    if(fStatus && d.status !== fStatus) return false;
+    if(fPrio && d.prioridade !== fPrio) return false;
+    if(search){
+      const hay = [d.protocolo, d.inquilinoNome, d.proprietarioNome, d.imovel].join(' ').toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  list.sort((a,b)=>{
+    const r = prioridadeRank(a.prioridade)-prioridadeRank(b.prioridade);
+    if(r!==0) return r;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  const container = document.getElementById('cardsContainer');
+  if(list.length===0){
+    const msg = demands.length===0
+      ? 'Nenhuma demanda registrada ainda. Clique em "+ Nova Demanda" para começar.'
+      : 'Nenhuma demanda encontrada com esses filtros.';
+    container.innerHTML = `<div class="empty-state"><div class="big">🗂️</div><p>${msg}</p></div>`;
+    return;
+  }
+
+  const abertos = list.filter(d=>d.status!=='Concluído');
+  const concluidos = list.filter(d=>d.status==='Concluído');
+  const forceExpandConcluidas = fStatus === 'Concluído';
+
+  let html = '';
+  if(!forceExpandConcluidas){
+    html += `<div class="group-heading">🗂️ Em aberto (${abertos.length})</div>`;
+    html += abertos.length
+      ? `<div class="cards-grid">${abertos.map(cardHtml).join('')}</div>`
+      : `<div class="empty-state" style="padding:26px;"><p>Nenhuma demanda em aberto com esses filtros.</p></div>`;
+  }
+
+  const expandNow = concluidasExpanded || forceExpandConcluidas;
+  html += `<div class="group-heading concluidas" onclick="toggleConcluidas()">${expandNow?'▾':'▸'} ✅ Concluídas (${concluidos.length})</div>`;
+  if(expandNow){
+    html += concluidos.length
+      ? `<div class="cards-grid">${concluidos.map(cardHtml).join('')}</div>`
+      : `<div class="empty-state" style="padding:26px;"><p>Nenhuma demanda concluída ainda.</p></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function escapeHtml(str){
+  if(str===undefined || str===null) return '';
+  return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+/* ==================== NOVA DEMANDA / EDIÇÃO ==================== */
+function handleSubmitDemand(e){
+  e.preventDefault();
+  const data = {
+    imovel: document.getElementById('f_imovel').value.trim(),
+    inquilinoNome: document.getElementById('f_inquilinoNome').value.trim(),
+    inquilinoTelefone: document.getElementById('f_inquilinoTelefone').value.trim(),
+    proprietarioNome: document.getElementById('f_proprietarioNome').value.trim(),
+    proprietarioTelefone: document.getElementById('f_proprietarioTelefone').value.trim(),
+    tipoServico: document.getElementById('f_tipoServico').value,
+    prioridade: document.getElementById('f_prioridade').value,
+    descricao: document.getElementById('f_descricao').value.trim(),
+    prestador: document.getElementById('f_prestador').value.trim(),
+    observacoesInternas: document.getElementById('f_observacoes').value.trim(),
+  };
+
+  const editingId = document.getElementById('editingId').value;
+  if(editingId){
+    const d = demands.find(x=>x.id===editingId);
+    if(d){
+      Object.assign(d, data);
+      d.history.push({date:new Date().toISOString(), text:'Demanda editada'});
+      saveDemands();
+      pushToCloud();
+      writeLocalBackupFile();
+      showSuccess('Demanda '+d.protocolo+' atualizada com sucesso.', d.id);
+    }
+  } else {
+    const now = new Date();
+    const protocolo = generateProtocolo(now);
+    const novaDemanda = Object.assign({
+      id: uid(),
+      protocolo,
+      createdAt: now.toISOString(),
+      status: 'Aguardando orçamento',
+      valorOrcamento: '',
+      history: [{date: now.toISOString(), text:'Demanda registrada'}],
+      acompanhamentos: []
+    }, data);
+    demands.push(novaDemanda);
+    saveDemands();
+    pushToCloud();
+    writeLocalBackupFile();
+    showSuccess('Demanda registrada com protocolo '+protocolo+'.', novaDemanda.id);
+  }
+  resetForm();
+  renderPainel();
+}
+
+function showSuccess(text, id){
+  const banner = document.getElementById('successBanner');
+  document.getElementById('successText').innerHTML = '✅ '+text;
+  banner.classList.add('show');
+  document.getElementById('successGoDetail').onclick = ()=>{ switchTab('painel'); openModal(id); };
+}
+function dismissSuccess(){
+  document.getElementById('successBanner').classList.remove('show');
+}
+function resetForm(){
+  document.getElementById('demandForm').reset();
+  document.getElementById('editingId').value='';
+  document.getElementById('submitBtn').textContent = 'Registrar Demanda';
+}
+function loadDemandIntoForm(d){
+  document.getElementById('editingId').value = d.id;
+  document.getElementById('f_imovel').value = d.imovel;
+  document.getElementById('f_inquilinoNome').value = d.inquilinoNome;
+  document.getElementById('f_inquilinoTelefone').value = d.inquilinoTelefone;
+  document.getElementById('f_proprietarioNome').value = d.proprietarioNome;
+  document.getElementById('f_proprietarioTelefone').value = d.proprietarioTelefone;
+  document.getElementById('f_tipoServico').value = d.tipoServico;
+  document.getElementById('f_prioridade').value = d.prioridade;
+  document.getElementById('f_descricao').value = d.descricao;
+  document.getElementById('f_prestador').value = d.prestador;
+  document.getElementById('f_observacoes').value = d.observacoesInternas;
+  document.getElementById('submitBtn').textContent = 'Salvar Alterações';
+}
+
+/* ==================== MODAL DETALHE ==================== */
+function openModal(id){
+  const d = demands.find(x=>x.id===id);
+  if(!d) return;
+  currentModalId = id;
+  currentModalTemplateKey = null;
+  document.getElementById('modalProtocolo').textContent = d.protocolo;
+  document.getElementById('modalDetailGrid').innerHTML = `
+    <div><div class="dt-label">Imóvel</div><div class="dt-val">${escapeHtml(d.imovel)}</div></div>
+    <div><div class="dt-label">Prioridade</div><div class="dt-val">${d.prioridade}</div></div>
+    <div><div class="dt-label">Inquilino</div><div class="dt-val">${escapeHtml(d.inquilinoNome)} · ${escapeHtml(d.inquilinoTelefone)}</div></div>
+    <div><div class="dt-label">Proprietário</div><div class="dt-val">${escapeHtml(d.proprietarioNome)||'—'} ${d.proprietarioTelefone?'· '+escapeHtml(d.proprietarioTelefone):''}</div></div>
+    <div><div class="dt-label">Tipo de serviço</div><div class="dt-val">${escapeHtml(d.tipoServico)}</div></div>
+    <div><div class="dt-label">Prestador</div><div class="dt-val">${escapeHtml(d.prestador)||'A definir'}</div></div>
+    <div class="dt-val" style="grid-column:1/-1;"><div class="dt-label">Descrição</div>${escapeHtml(d.descricao)}</div>
+  `;
+  document.getElementById('modalInternalBox').innerHTML = d.observacoesInternas
+    ? '🔒 <b>Observações internas:</b> '+escapeHtml(d.observacoesInternas)
+    : '🔒 <i>Sem observações internas.</i>';
+  document.getElementById('modalStatusSelect').value = d.status;
+  document.getElementById('modalValorOrcamento').value = d.valorOrcamento || '';
+
+  document.getElementById('modalMsgBtns').innerHTML = Object.keys(templates).map(k=>
+    `<button class="btn secondary small" onclick="previewMessage('${k}')">${templates[k].label}</button>`
+  ).join('');
+  document.getElementById('modalMsgPreview').classList.remove('show');
+
+  document.getElementById('modalHistory').innerHTML = d.history.slice().reverse().map(h=>
+    `<li>${formatDateTime(h.date)} — ${escapeHtml(h.text)}</li>`
+  ).join('');
+
+  renderAcompanhamento(d);
+  const today = new Date();
+  document.getElementById('acompData').value = today.getFullYear()+'-'+pad(today.getMonth()+1,2)+'-'+pad(today.getDate(),2);
+  document.getElementById('acompTexto').value = '';
+
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function renderAcompanhamento(d){
+  if(!Array.isArray(d.acompanhamentos)) d.acompanhamentos = [];
+  const list = d.acompanhamentos.slice().sort((a,b)=> (a.data||'').localeCompare(b.data||'') || (a.createdAt||'').localeCompare(b.createdAt||''));
+  const container = document.getElementById('modalAcompanhamento');
+  if(list.length===0){
+    container.innerHTML = `<p class="acomp-empty">Nenhum acompanhamento registrado ainda. Use o campo abaixo para ir anotando o andamento (orçamento enviado, material comprado, agendamento, etc.).</p>`;
+    return;
+  }
+  container.innerHTML = list.map(a=>`
+    <li>
+      <div><span class="acomp-date">${formatDateBR(a.data)}</span>${escapeHtml(a.texto)}</div>
+      <button class="acomp-del" onclick="deleteAcompanhamento('${a.id}')" title="Remover">🗑</button>
+    </li>
+  `).join('');
+}
+function formatDateBR(iso){
+  if(!iso) return '';
+  const [y,m,dd] = iso.split('-');
+  return dd+'/'+m+'/'+y;
+}
+function addAcompanhamento(){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  const data = document.getElementById('acompData').value;
+  const texto = document.getElementById('acompTexto').value.trim();
+  if(!data || !texto){
+    alert('Preencha a data e a descrição do acompanhamento.');
+    return;
+  }
+  if(!Array.isArray(d.acompanhamentos)) d.acompanhamentos = [];
+  d.acompanhamentos.push({ id: uid(), data, texto, createdAt: new Date().toISOString() });
+  saveDemands();
+  pushToCloud();
+  writeLocalBackupFile();
+  document.getElementById('acompTexto').value = '';
+  renderAcompanhamento(d);
+}
+function deleteAcompanhamento(entryId){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  const ok = confirm('Remover este acompanhamento?');
+  if(!ok) return;
+  d.acompanhamentos = (d.acompanhamentos||[]).filter(a=>a.id!==entryId);
+  saveDemands();
+  pushToCloud();
+  writeLocalBackupFile();
+  renderAcompanhamento(d);
+}
+function openPrintView(){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  const acomps = (d.acompanhamentos||[]).slice().sort((a,b)=> (a.data||'').localeCompare(b.data||'') || (a.createdAt||'').localeCompare(b.createdAt||''));
+  const acompHtml = acomps.length
+    ? '<ul>'+acomps.map(a=>`<li><b>${formatDateBR(a.data)}</b> — ${escapeHtml(a.texto)}</li>`).join('')+'</ul>'
+    : '<p><i>Sem acompanhamentos registrados.</i></p>';
+  document.getElementById('printArea').innerHTML = `
+    <h2>Casa Blanca Imobiliária — Protocolo ${escapeHtml(d.protocolo)}</h2>
+    <div class="print-row"><span class="print-label">Status:</span> <b>${escapeHtml(d.status)}</b> · <span class="print-label">Prioridade:</span> <b>${escapeHtml(d.prioridade)}</b></div>
+    <div class="print-row"><span class="print-label">Imóvel:</span> ${escapeHtml(d.imovel)}</div>
+    <div class="print-row"><span class="print-label">Inquilino:</span> ${escapeHtml(d.inquilinoNome)} ${d.inquilinoTelefone?'· '+escapeHtml(d.inquilinoTelefone):''}</div>
+    <div class="print-row"><span class="print-label">Proprietário:</span> ${escapeHtml(d.proprietarioNome)||'—'} ${d.proprietarioTelefone?'· '+escapeHtml(d.proprietarioTelefone):''}</div>
+    <div class="print-row"><span class="print-label">Tipo de serviço:</span> ${escapeHtml(d.tipoServico)}</div>
+    <div class="print-row"><span class="print-label">Prestador:</span> ${escapeHtml(d.prestador)||'A definir'}</div>
+    <div class="print-row"><span class="print-label">Valor orçamento:</span> ${d.valorOrcamento ? formatCurrency(d.valorOrcamento) : '—'}</div>
+    <div class="print-row"><span class="print-label">Descrição:</span> ${escapeHtml(d.descricao)}</div>
+    <div class="print-row"><span class="print-label">Registrado em:</span> ${formatDate(d.createdAt)}</div>
+    <h3 style="margin-top:16px;">Acompanhamento do atendimento</h3>
+    ${acompHtml}
+  `;
+  window.print();
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+  currentModalId = null;
+}
+function handleStatusChange(){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  const newStatus = document.getElementById('modalStatusSelect').value;
+  if(newStatus !== d.status){
+    d.status = newStatus;
+    d.history.push({date:new Date().toISOString(), text:'Status alterado para "'+newStatus+'"'});
+    saveDemands();
+    pushToCloud();
+    writeLocalBackupFile();
+    openModal(d.id);
+    renderPainel();
+  }
+}
+function handleValorChange(){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  d.valorOrcamento = document.getElementById('modalValorOrcamento').value.trim();
+  d.history.push({date:new Date().toISOString(), text:'Valor de orçamento atualizado'});
+  saveDemands();
+  pushToCloud();
+  writeLocalBackupFile();
+}
+function handleDelete(){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  const ok = confirm('Excluir a demanda '+d.protocolo+'? Essa ação não pode ser desfeita.');
+  if(!ok) return;
+  demands = demands.filter(x=>x.id!==d.id);
+  saveDemands();
+  pushToCloud();
+  writeLocalBackupFile();
+  closeModal();
+  renderPainel();
+}
+function handleEditFromModal(){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  closeModal();
+  switchTab('nova');
+  loadDemandIntoForm(d);
+}
+
+/* ==================== MENSAGENS ==================== */
+function fillTemplate(str, d){
+  const map = {
+    protocolo: d.protocolo,
+    inquilino: d.inquilinoNome,
+    proprietario: d.proprietarioNome || 'Proprietário(a)',
+    imovel: d.imovel,
+    tipoServico: d.tipoServico,
+    descricao: d.descricao,
+    prestador: d.prestador || 'a definir',
+    valorOrcamento: d.valorOrcamento ? formatCurrency(d.valorOrcamento) : '[valor a definir]',
+    prioridade: d.prioridade,
+    data: formatDate(d.createdAt)
+  };
+  return str.replace(/{{\s*(\w+)\s*}}/g, (m,k)=> map[k]!==undefined ? map[k] : m);
+}
+function previewMessage(key){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  currentModalTemplateKey = key;
+  const text = fillTemplate(templates[key].text, d);
+  document.getElementById('modalMsgText').value = text;
+  document.getElementById('modalMsgPreview').classList.add('show');
+}
+function copyMsg(){
+  const text = document.getElementById('modalMsgText').value;
+  navigator.clipboard.writeText(text).then(()=>{
+    alertInline('Mensagem copiada!');
+  }).catch(()=>{
+    const ta = document.getElementById('modalMsgText');
+    ta.select();
+    document.execCommand('copy');
+    alertInline('Mensagem copiada!');
+  });
+}
+function alertInline(msg){
+  const btn = event.target;
+  const original = btn.textContent;
+  btn.textContent = '✅ '+msg;
+  setTimeout(()=>{ btn.textContent = original; }, 1500);
+}
+function openWhatsAppFromModal(){
+  const d = demands.find(x=>x.id===currentModalId);
+  if(!d) return;
+  const text = document.getElementById('modalMsgText').value;
+  let phone = (currentModalTemplateKey==='proprietario' || currentModalTemplateKey==='orcamento')
+    ? d.proprietarioTelefone : d.inquilinoTelefone;
+  if(!phone) phone = d.inquilinoTelefone || d.proprietarioTelefone || '';
+  let digits = phone.replace(/\D/g,'');
+  if(digits && !digits.startsWith('55')) digits = '55'+digits;
+  const url = digits
+    ? `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url,'_blank');
+}
+
+/* ==================== TEMPLATES TAB ==================== */
+function renderTemplates(){
+  const container = document.getElementById('templatesContainer');
+  container.innerHTML = Object.keys(templates).map(k=>`
+    <div class="tpl-card">
+      <h3>${templates[k].label}</h3>
+      <p class="muted">Use as variáveis entre chaves duplas para personalizar automaticamente.</p>
+      <textarea id="tpl_${k}">${templates[k].text}</textarea>
+      <div class="tpl-actions">
+        <button class="btn small" onclick="saveTemplate('${k}')">💾 Salvar modelo</button>
+        <button class="btn ghost small" onclick="resetTemplate('${k}')">↺ Restaurar padrão</button>
+      </div>
+    </div>
+  `).join('');
+}
+function saveTemplate(key){
+  templates[key].text = document.getElementById('tpl_'+key).value;
+  saveTemplates();
+  pushToCloud();
+  writeLocalBackupFile();
+  const btn = event.target;
+  const original = btn.textContent;
+  btn.textContent = '✅ Salvo!';
+  setTimeout(()=>{ btn.textContent = original; }, 1500);
+}
+function resetTemplate(key){
+  templates[key].text = DEFAULT_TEMPLATES[key].text;
+  saveTemplates();
+  pushToCloud();
+  writeLocalBackupFile();
+  renderTemplates();
+}
+
+/* ==================== SINCRONIZAÇÃO EM NUVEM ==================== */
+const CLOUD_CONFIG_KEY = 'cb_manutencao_cloud_v1';
+function loadCloudConfig(){
+  try{ const raw = localStorage.getItem(CLOUD_CONFIG_KEY); return raw ? JSON.parse(raw) : {url:'',token:''}; }catch(e){ return {url:'',token:''}; }
+}
+function saveCloudConfigToStorage(cfg){
+  try{ localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cfg)); }catch(e){}
+}
+let cloudConfig = loadCloudConfig();
+let lastKnownTimestamp = null;
+let syncIntervalHandle = null;
+
+function cloudConfigured(){ return !!(cloudConfig.url && cloudConfig.token); }
+
+function setCloudChip(state, text){
+  const chip = document.getElementById('cloudChip');
+  if(!chip) return;
+  const icons = {off:'⚪', online:'🟢', syncing:'🟡', offline:'🔴', error:'🔴'};
+  chip.textContent = (icons[state]||'⚪') + ' Nuvem: ' + text;
+}
+
+function localSnapshotForCloud(){ return { demands, templates }; }
+function applyRemoteSnapshot(remote){
+  if(Array.isArray(remote.demands)) demands = remote.demands;
+  if(remote.templates) templates = remote.templates;
+  saveDemands();
+  saveTemplates();
+  renderPainel();
+  renderTemplates();
+}
+
+async function pushToCloud(){
+  if(!cloudConfigured()) return;
+  setCloudChip('syncing','sincronizando...');
+  try{
+    const ts = new Date().toISOString();
+    const res = await fetch(cloudConfig.url, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ sistema:'manutencao', token: cloudConfig.token, data: localSnapshotForCloud(), timestamp: ts })
+    });
+    const json = await res.json();
+    if(json.ok){ lastKnownTimestamp = json.timestamp || ts; setCloudChip('online','sincronizado agora'); }
+    else { setCloudChip('error', json.error || 'erro ao salvar'); }
+  }catch(e){ setCloudChip('offline','sem conexão'); }
+}
+async function pullFromCloud(manual){
+  if(!cloudConfigured()){ setCloudChip('off','desligada'); return; }
+  if(manual) setCloudChip('syncing','sincronizando...');
+  try{
+    const url = cloudConfig.url + '?sistema=manutencao&token=' + encodeURIComponent(cloudConfig.token);
+    const res = await fetch(url);
+    const json = await res.json();
+    if(json.ok){
+      if(json.timestamp && json.timestamp !== lastKnownTimestamp){
+        lastKnownTimestamp = json.timestamp;
+        if(json.data){ try{ applyRemoteSnapshot(JSON.parse(json.data)); }catch(e){} }
+      }
+      setCloudChip('online','conectado');
+    } else {
+      setCloudChip('error', json.error || 'erro ao ler');
+    }
+  }catch(e){ setCloudChip('offline','sem conexão'); }
+}
+function startAutoSync(){
+  if(syncIntervalHandle) clearInterval(syncIntervalHandle);
+  if(!cloudConfigured()){ setCloudChip('off','desligada'); return; }
+  pullFromCloud();
+  syncIntervalHandle = setInterval(()=>pullFromCloud(), 20000);
+}
+async function testCloudConnection(){
+  const url = document.getElementById('cloudUrl').value.trim();
+  const token = document.getElementById('cloudToken').value.trim();
+  document.getElementById('cloudStatusText').textContent = 'Testando...';
+  try{
+    const res = await fetch(url + '?sistema=manutencao&token=' + encodeURIComponent(token));
+    const json = await res.json();
+    document.getElementById('cloudStatusText').textContent = json.ok ? '🟢 Conectado com sucesso!' : '🔴 '+(json.error||'Falha na conexão');
+  }catch(e){
+    document.getElementById('cloudStatusText').textContent = '🔴 Não foi possível conectar. Confira a URL.';
+  }
+}
+function saveCloudConfigAndSync(){
+  const url = document.getElementById('cloudUrl').value.trim();
+  const token = document.getElementById('cloudToken').value.trim();
+  cloudConfig = {url, token};
+  saveCloudConfigToStorage(cloudConfig);
+  lastKnownTimestamp = null;
+  startAutoSync();
+  pushToCloud();
+}
+function disconnectCloud(){
+  cloudConfig = {url:'', token:''};
+  saveCloudConfigToStorage(cloudConfig);
+  document.getElementById('cloudUrl').value='';
+  document.getElementById('cloudToken').value='';
+  if(syncIntervalHandle) clearInterval(syncIntervalHandle);
+  setCloudChip('off','desligada');
+}
+
+/* ==================== BACKUP AUTOMÁTICO EM ARQUIVO LOCAL ==================== */
+const BACKUP_DB_NAME = 'cb_manutencao_files_v1';
+let backupFileHandle = null;
+
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(BACKUP_DB_NAME, 1);
+    req.onupgradeneeded = ()=> req.result.createObjectStore('handles');
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbGet(key){
+  const db = await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction('handles','readonly');
+    const g = tx.objectStore('handles').get(key);
+    g.onsuccess = ()=> resolve(g.result);
+    g.onerror = ()=> reject(g.error);
+  });
+}
+async function idbSet(key, value){
+  const db = await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction('handles','readwrite');
+    tx.objectStore('handles').put(value, key);
+    tx.oncomplete = ()=> resolve();
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function idbDelete(key){
+  const db = await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction('handles','readwrite');
+    tx.objectStore('handles').delete(key);
+    tx.oncomplete = ()=> resolve();
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function linkBackupFile(){
+  if(!window.showSaveFilePicker){
+    alert('Este recurso funciona apenas no Chrome ou Edge, no computador (não em celular).');
+    return;
+  }
+  try{
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'casa-blanca-manutencao-backup.json',
+      types: [{ description:'JSON', accept: {'application/json':['.json']} }]
+    });
+    backupFileHandle = handle;
+    await idbSet('backupHandle', handle);
+    await writeLocalBackupFile();
+    await updateBackupFileUI();
+  }catch(e){ /* usuário cancelou */ }
+}
+async function reauthorizeBackupFile(){
+  if(!backupFileHandle) return;
+  try{
+    const perm = await backupFileHandle.requestPermission({mode:'readwrite'});
+    if(perm==='granted'){ await writeLocalBackupFile(); }
+    await updateBackupFileUI();
+  }catch(e){}
+}
+async function unlinkBackupFile(){
+  backupFileHandle = null;
+  await idbDelete('backupHandle');
+  await updateBackupFileUI();
+}
+async function writeLocalBackupFile(){
+  if(!backupFileHandle) return;
+  try{
+    const writable = await backupFileHandle.createWritable();
+    await writable.write(JSON.stringify({ demands, templates, exportedAt: new Date().toISOString() }, null, 2));
+    await writable.close();
+  }catch(e){ console.warn('Falha ao escrever backup automático', e); }
+}
+async function updateBackupFileUI(){
+  const desc = document.getElementById('backupFileDesc');
+  const linkBtn = document.getElementById('linkBackupBtn');
+  const reauthBtn = document.getElementById('reauthorizeBtn');
+  const unlinkBtn = document.getElementById('unlinkBackupBtn');
+  if(!desc) return;
+  if(!backupFileHandle){
+    desc.textContent = 'Nenhum arquivo vinculado ainda.';
+    linkBtn.style.display=''; reauthBtn.style.display='none'; unlinkBtn.style.display='none';
+    return;
+  }
+  let perm = 'granted';
+  try{ perm = await backupFileHandle.queryPermission({mode:'readwrite'}); }catch(e){}
+  desc.textContent = 'Arquivo vinculado: ' + (backupFileHandle.name || 'backup.json') + (perm==='granted' ? ' (ativo)' : ' (precisa reautorizar)');
+  linkBtn.style.display='';
+  reauthBtn.style.display = perm==='granted' ? 'none' : '';
+  unlinkBtn.style.display='';
+}
+async function initBackupFileHandle(){
+  try{ const handle = await idbGet('backupHandle'); if(handle) backupFileHandle = handle; }catch(e){}
+  await updateBackupFileUI();
+}
+
+/* ==================== BACKUP ==================== */
+function openBackup(){
+  document.getElementById('cloudUrl').value = cloudConfig.url || '';
+  document.getElementById('cloudToken').value = cloudConfig.token || '';
+  document.getElementById('cloudStatusText').textContent = cloudConfigured() ? 'Configurado.' : 'Ainda não configurado.';
+  updateBackupFileUI();
+  document.getElementById('backupOverlay').classList.add('show');
+}
+function closeBackup(){ document.getElementById('backupOverlay').classList.remove('show'); }
+function exportData(){
+  const payload = { demands, templates, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `casa-blanca-manutencao-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const payload = JSON.parse(e.target.result);
+      const ok = confirm('Importar este arquivo substituirá os dados atuais do painel. Deseja continuar?');
+      if(!ok) return;
+      if(Array.isArray(payload.demands)) demands = payload.demands;
+      if(payload.templates) templates = payload.templates;
+      saveDemands();
+      saveTemplates();
+      pushToCloud();
+      writeLocalBackupFile();
+      renderPainel();
+      renderTemplates();
+      closeBackup();
+    }catch(err){
+      alert('Não foi possível ler este arquivo. Verifique se é um backup válido.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* ==================== INIT ==================== */
+document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') closeModal(); });
+document.getElementById('backupOverlay').addEventListener('click', (e)=>{ if(e.target.id==='backupOverlay') closeBackup(); });
+
+if(!storageAvailable){
+  const warn = document.createElement('div');
+  warn.style.cssText = 'background:#fef3c7;color:#92400e;padding:10px 28px;font-size:13px;text-align:center;';
+  warn.textContent = '⚠️ Este navegador não permite salvar dados localmente neste momento. Para uso diário com salvamento automático, baixe o arquivo e abra-o diretamente no seu navegador (Chrome/Edge). Use o backup em JSON para não perder os dados desta sessão.';
+  document.body.insertBefore(warn, document.body.firstChild);
+}
+
+renderPainel();
+renderTemplates();
+initBackupFileHandle();
+startAutoSync();
+</script>
+</body>
+</html>

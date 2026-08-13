@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Blanca Imobiliária — Agenda Sr. Dedé</title>
+<style>
+  :root{
+    --brand:#0f766e;
+    --brand-dark:#0b4f4a;
+    --brand-light:#ccfbf1;
+    --bg:#f1f5f9;
+    --card-bg:#ffffff;
+    --text:#1e293b;
+    --muted:#64748b;
+    --border:#e2e8f0;
+    --manha:#ea580c;
+    --manha-bg:#ffedd5;
+    --tarde:#2563eb;
+    --tarde-bg:#dbeafe;
+    --servico:#0f766e;
+    --servico-bg:#ccfbf1;
+    --orcamento:#b45309;
+    --orcamento-bg:#fef3c7;
+    --verificacao:#7c3aed;
+    --verificacao-bg:#ede9fe;
+    --pos:#15803d;
+    --pos-bg:#dcfce7;
+    --neg:#dc2626;
+    --neg-bg:#fee2e2;
+    --radius:10px;
+    --shadow:0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header.topbar{background:linear-gradient(135deg,var(--brand-dark),var(--brand));color:#fff;padding:18px 28px;box-shadow:var(--shadow);}
+  .topbar-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;max-width:1300px;margin:0 auto;}
+  .brand h1{margin:0;font-size:20px;font-weight:700;}
+  .brand p{margin:2px 0 0;font-size:13px;opacity:.85;}
+  .topbar-actions{display:flex;gap:8px;}
+  .icon-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;}
+  .icon-btn:hover{background:rgba(255,255,255,.25);}
+
+  nav.tabs{display:flex;gap:6px;max-width:1300px;margin:16px auto 0;padding:0 28px;flex-wrap:wrap;}
+  .tab-btn{background:#fff;border:1px solid var(--border);color:var(--muted);padding:10px 18px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600;transition:.15s;}
+  .tab-btn:hover{border-color:var(--brand);color:var(--brand);}
+  .tab-btn.active{background:var(--brand);border-color:var(--brand);color:#fff;}
+
+  main{max-width:1300px;margin:0 auto;padding:20px 28px 60px;}
+  section.tab-panel{display:none;}
+  section.tab-panel.active{display:block;}
+
+  .month-nav{display:flex;align-items:center;gap:12px;background:#fff;padding:14px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;flex-wrap:wrap;}
+  .month-nav h2{margin:0;font-size:17px;min-width:170px;text-align:center;text-transform:capitalize;}
+  .month-nav .btn.small{padding:7px 12px;}
+  .legend-row{display:flex;gap:16px;margin-left:auto;flex-wrap:wrap;font-size:12.5px;color:var(--muted);}
+  .legend-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;}
+
+  .btn{background:var(--brand);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn:hover{background:var(--brand-dark);}
+  .btn.secondary{background:#fff;color:var(--brand);border:1px solid var(--brand);}
+  .btn.secondary:hover{background:var(--brand-light);}
+  .btn.danger{background:#fff;color:var(--neg);border:1px solid var(--neg);}
+  .btn.danger:hover{background:var(--neg-bg);}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  .btn.small{padding:6px 12px;font-size:12.5px;}
+
+  .calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+  .cal-head{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding:4px 0;}
+  .cal-day{background:#fff;border-radius:8px;box-shadow:var(--shadow);min-height:82px;padding:8px;cursor:pointer;position:relative;border:2px solid transparent;transition:.15s;}
+  .cal-day:hover{border-color:var(--brand);}
+  .cal-day.empty{background:transparent;box-shadow:none;cursor:default;}
+  .cal-day.today{border-color:var(--brand);}
+  .cal-daynum{font-size:13px;font-weight:700;}
+  .cal-periods{display:flex;gap:3px;margin-top:8px;}
+  .cal-period-bar{flex:1;height:8px;border-radius:4px;background:#e2e8f0;}
+  .cal-period-bar.on-manha{background:var(--manha);}
+  .cal-period-bar.on-tarde{background:var(--tarde);}
+  .cal-count{position:absolute;bottom:6px;right:8px;font-size:11px;color:var(--muted);font-weight:600;}
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted);background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);}
+  .empty-state .big{font-size:42px;margin-bottom:10px;}
+
+  form .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#fff;padding:20px;border-radius:var(--radius);box-shadow:var(--shadow);}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:13px;font-weight:600;color:var(--text);}
+  .field .hint{font-size:12px;color:var(--muted);font-weight:400;}
+  .field input, .field select, .field textarea{padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text);}
+  .field textarea{resize:vertical;min-height:70px;}
+  .form-actions{grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;}
+  .success-banner{background:var(--pos-bg);border:1px solid var(--pos);color:#14532d;padding:14px 18px;border-radius:var(--radius);margin-bottom:16px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .success-banner.show{display:flex;}
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+  .badge.periodo-Manhã{background:var(--manha-bg);color:var(--manha);}
+  .badge.periodo-Tarde{background:var(--tarde-bg);color:var(--tarde);}
+  .badge.periodo-Dia\ todo{background:linear-gradient(90deg,var(--manha-bg) 50%,var(--tarde-bg) 50%);color:var(--text);}
+  .badge.tipo-Serviço{background:var(--servico-bg);color:var(--servico);}
+  .badge.tipo-Orçamento{background:var(--orcamento-bg);color:var(--orcamento);}
+  .badge.tipo-Verificação{background:var(--verificacao-bg);color:var(--verificacao);}
+
+  .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
+  .metric-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;text-align:center;}
+  .metric-card .val{font-size:26px;font-weight:800;color:var(--brand-dark);}
+  .metric-card .lbl{font-size:12.5px;color:var(--muted);margin-top:4px;}
+
+  .finance-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:20px;}
+  .finance-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:14.5px;border-bottom:1px solid var(--border);}
+  .finance-row:last-child{border-bottom:none;}
+  .finance-row.total{font-weight:800;font-size:17px;}
+  .finance-row .val-pos{color:var(--pos);}
+  .finance-row .val-neg{color:var(--neg);}
+  .salario-edit{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:8px;}
+  .salario-edit input{width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;}
+
+  .report-section h3{font-size:15.5px;margin:22px 0 10px;}
+  table.report-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  table.report-table th, table.report-table td{padding:10px 12px;font-size:13px;text-align:left;border-bottom:1px solid var(--border);}
+  table.report-table th{background:var(--bg);color:var(--muted);font-weight:700;font-size:12px;text-transform:uppercase;}
+  table.report-table tr:last-child td{border-bottom:none;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;z-index:100;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:var(--radius);max-width:640px;width:100%;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.25);}
+  .modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  .modal-header h2{margin:0;font-size:18px;text-transform:capitalize;}
+  .close-x{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);}
+  .period-group{margin-bottom:16px;}
+  .period-group h4{margin:0 0 8px;font-size:14px;}
+  .entry-row{background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px;}
+  .entry-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap;}
+  .entry-row .muted{color:var(--muted);font-size:12.5px;margin:2px 0;}
+  .entry-actions{display:flex;gap:6px;margin-top:6px;}
+  .backup-note{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5;}
+
+  @media (max-width:700px){
+    form .form-grid{grid-template-columns:1fr;}
+    .calendar{grid-template-columns:repeat(7,1fr);gap:4px;}
+    .cal-day{min-height:60px;padding:5px;}
+  }
+  @media print{
+    header.topbar, nav.tabs, .month-nav .btn, #tab-agenda, #tab-registrar, .icon-btn { display:none !important; }
+    body{background:#fff;}
+    main{padding:0;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <h1>🧱 Agenda — Sr. Dedé (Pedreiro)</h1>
+      <p>Casa Blanca Imobiliária · Iguatu-CE</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" onclick="openBackup()">⚙️ Backup</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="agenda" onclick="switchTab('agenda')">📅 Agenda Mensal</button>
+  <button class="tab-btn" data-tab="registrar" onclick="switchTab('registrar')">➕ Registrar Saída</button>
+  <button class="tab-btn" data-tab="relatorio" onclick="switchTab('relatorio')">📊 Relatório Mensal</button>
+</nav>
+
+<main>
+  <!-- AGENDA -->
+  <section class="tab-panel active" id="tab-agenda">
+    <div class="month-nav">
+      <button class="btn secondary small" onclick="changeMonth(-1)">‹ Mês anterior</button>
+      <h2 id="monthLabel"></h2>
+      <button class="btn secondary small" onclick="changeMonth(1)">Próximo mês ›</button>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:var(--manha);"></span>Manhã</span>
+        <span><span class="legend-dot" style="background:var(--tarde);"></span>Tarde</span>
+      </div>
+    </div>
+    <div class="calendar" id="calendarGrid"></div>
+  </section>
+
+  <!-- REGISTRAR SAÍDA -->
+  <section class="tab-panel" id="tab-registrar">
+    <div class="success-banner" id="successBanner">
+      <span id="successText"></span>
+      <button class="btn secondary small" onclick="dismissSuccess()">Fechar</button>
+    </div>
+    <form class="form-grid" id="entryForm" onsubmit="handleSubmitEntry(event)">
+      <input type="hidden" id="editingId" value="">
+      <div class="field">
+        <label>Data *</label>
+        <input type="date" id="f_data" required>
+      </div>
+      <div class="field">
+        <label>Período *</label>
+        <select id="f_periodo" required>
+          <option value="Manhã">Manhã</option>
+          <option value="Tarde">Tarde</option>
+          <option value="Dia todo">Dia todo</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tipo *</label>
+        <select id="f_tipo" required>
+          <option value="Serviço">Serviço</option>
+          <option value="Orçamento">Orçamento</option>
+          <option value="Verificação">Verificação</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Imóvel *</label>
+        <input type="text" id="f_imovel" required placeholder="Endereço / código do imóvel">
+      </div>
+      <div class="field">
+        <label>Cliente *</label>
+        <input type="text" id="f_cliente" required placeholder="Nome do cliente">
+      </div>
+      <div class="field">
+        <label>Quem paga</label>
+        <input type="text" id="f_quemPaga" placeholder="Ex: Proprietário, Inquilino, Imobiliária">
+      </div>
+      <div class="field">
+        <label>Valor (R$)</label>
+        <input type="text" id="f_valor" placeholder="Ex: 350,00">
+      </div>
+      <div class="field">
+        <label>Protocolo vinculado</label>
+        <input type="text" id="f_protocolo" placeholder="Ex: CB-0726-0001">
+      </div>
+      <div class="field full">
+        <label>Descrição *</label>
+        <textarea id="f_descricao" required placeholder="Descreva o serviço, orçamento ou verificação realizada..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" onclick="resetForm()">Cancelar</button>
+        <button type="submit" class="btn" id="submitBtn">Registrar Saída</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- RELATÓRIO MENSAL -->
+  <section class="tab-panel" id="tab-relatorio">
+    <div class="month-nav">
+      <button class="btn secondary small" onclick="changeMonth(-1)">‹ Mês anterior</button>
+      <h2 id="monthLabelReport"></h2>
+      <button class="btn secondary small" onclick="changeMonth(1)">Próximo mês ›</button>
+      <button class="btn small" style="margin-left:auto;" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    </div>
+
+    <div class="metrics-grid" id="metricsGrid"></div>
+
+    <div class="finance-card" id="financeCard"></div>
+
+    <div class="report-section">
+      <h3>🧱 Serviços executados</h3>
+      <div id="tableServicos"></div>
+    </div>
+    <div class="report-section">
+      <h3>📐 Orçamentos</h3>
+      <div id="tableOrcamentos"></div>
+    </div>
+    <div class="report-section">
+      <h3>🔍 Verificações</h3>
+      <div id="tableVerificacoes"></div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL LISTA DIÁRIA -->
+<div class="modal-overlay" id="dayModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="dayModalTitle"></h2>
+      <button class="close-x" onclick="closeDayModal()">✕</button>
+    </div>
+    <div id="dayModalBody"></div>
+    <div class="form-actions" style="margin-top:10px;">
+      <button class="btn" id="dayModalAddBtn">➕ Registrar saída neste dia</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BACKUP -->
+<div class="modal-overlay" id="backupOverlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>⚙️ Backup dos dados</h2>
+      <button class="close-x" onclick="closeBackup()">✕</button>
+    </div>
+    <p style="font-size:13.5px;color:var(--muted);">Os dados ficam salvos no navegador (localStorage). Exporte um backup periodicamente para não perder informações, principalmente se acessar de outro computador.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn" onclick="exportData()">⬇️ Exportar dados (JSON)</button>
+      <button class="btn secondary" onclick="document.getElementById('importFile').click()">⬆️ Importar dados (JSON)</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+    </div>
+    <p class="backup-note">
+      Dica: salve este arquivo .html em uma pasta fixa do computador (ex: Documentos) e sempre abra a partir dela, para que os dados salvos automaticamente sejam sempre os mesmos.
+    </p>
+  </div>
+</div>
+
+<script>
+/* ==================== ESTADO ==================== */
+const STORAGE_KEY = 'cb_dede_agenda_v1';
+const SALARIO_KEY = 'cb_dede_salario_v1';
+let storageAvailable = true;
+function testStorage(){
+  try{ const k='__t__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }catch(e){ return false; }
+}
+storageAvailable = testStorage();
+
+let entries = [];
+let salarioFixo = 1800;
+let currentModalDate = null;
+
+const today = new Date();
+let viewYear = today.getFullYear();
+let viewMonth = today.getMonth(); // 0-indexed
+
+function loadEntries(){
+  if(!storageAvailable) return [];
+  try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; }
+}
+function saveEntries(){
+  if(!storageAvailable) return;
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }catch(e){}
+}
+function loadSalario(){
+  if(!storageAvailable) return 1800;
+  try{ const raw = localStorage.getItem(SALARIO_KEY); return raw ? parseFloat(raw) : 1800; }catch(e){ return 1800; }
+}
+function saveSalario(){
+  if(!storageAvailable) return;
+  try{ localStorage.setItem(SALARIO_KEY, String(salarioFixo)); }catch(e){}
+}
+
+entries = loadEntries();
+salarioFixo = loadSalario();
+
+/* ==================== HELPERS ==================== */
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2)); }
+function pad(n,len){ return String(n).padStart(len,'0'); }
+function ymd(y,m,d){ return y+'-'+pad(m+1,2)+'-'+pad(d,2); }
+function parseValor(v){
+  if(v===undefined||v===null||v==='') return 0;
+  const n = parseFloat(String(v).replace(/[^\d,.-]/g,'').replace(',','.'));
+  return isNaN(n) ? 0 : n;
+}
+function formatCurrency(n){
+  return (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function formatDateBR(iso){
+  const [y,m,d] = iso.split('-');
+  return d+'/'+m+'/'+y;
+}
+const MONTH_NAMES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function escapeHtml(str){
+  if(str===undefined||str===null) return '';
+  return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+/* ==================== TABS ==================== */
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='agenda') renderCalendar();
+  if(name==='relatorio') renderReport();
+  if(name==='registrar' && !document.getElementById('editingId').value){
+    document.getElementById('f_data').value = ymd(today.getFullYear(), today.getMonth(), today.getDate());
+  }
+}
+
+/* ==================== CALENDÁRIO ==================== */
+function changeMonth(delta){
+  viewMonth += delta;
+  if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+  if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+  renderCalendar();
+  renderReport();
+}
+function entriesForDate(dateStr){
+  return entries.filter(e=>e.data===dateStr);
+}
+function renderCalendar(){
+  const label = MONTH_NAMES[viewMonth] + ' de ' + viewYear;
+  document.getElementById('monthLabel').textContent = label;
+  document.getElementById('monthLabelReport').textContent = label;
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const grid = document.getElementById('calendarGrid');
+
+  let html = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+
+  for(let i=0;i<firstDay;i++){
+    html += `<div class="cal-day empty"></div>`;
+  }
+  const todayStr = ymd(today.getFullYear(), today.getMonth(), today.getDate());
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = ymd(viewYear, viewMonth, d);
+    const dayEntries = entriesForDate(dateStr);
+    const hasManha = dayEntries.some(e=>e.periodo==='Manhã' || e.periodo==='Dia todo');
+    const hasTarde = dayEntries.some(e=>e.periodo==='Tarde' || e.periodo==='Dia todo');
+    const isToday = dateStr===todayStr;
+    html += `<div class="cal-day${isToday?' today':''}" onclick="openDayModal('${dateStr}')">
+      <div class="cal-daynum">${d}</div>
+      <div class="cal-periods">
+        <div class="cal-period-bar${hasManha?' on-manha':''}"></div>
+        <div class="cal-period-bar${hasTarde?' on-tarde':''}"></div>
+      </div>
+      ${dayEntries.length ? `<div class="cal-count">${dayEntries.length}</div>` : ''}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+/* ==================== MODAL DIA ==================== */
+function openDayModal(dateStr){
+  currentModalDate = dateStr;
+  document.getElementById('dayModalTitle').textContent = 'Lista diária — ' + formatDateBR(dateStr);
+  const dayEntries = entriesForDate(dateStr);
+
+  function renderGroup(title, list){
+    if(list.length===0) return '';
+    return `<div class="period-group"><h4>${title}</h4>${list.map(e=>`
+      <div class="entry-row">
+        <div class="entry-row-top">
+          <span class="badge tipo-${e.tipo}">${e.tipo}</span>
+          <span>${e.valor ? formatCurrency(parseValor(e.valor)) : ''}</span>
+        </div>
+        <div><b>${escapeHtml(e.imovel)}</b> — ${escapeHtml(e.cliente)}</div>
+        <div class="muted">${escapeHtml(e.descricao)}</div>
+        <div class="muted">${e.quemPaga ? 'Quem paga: '+escapeHtml(e.quemPaga)+' · ' : ''}${e.protocolo ? 'Protocolo: '+escapeHtml(e.protocolo) : ''}</div>
+        <div class="entry-actions">
+          <button class="btn ghost small" onclick="editEntry('${e.id}')">✏️ Editar</button>
+          <button class="btn danger small" onclick="deleteEntry('${e.id}')">🗑 Excluir</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  }
+
+  const manha = dayEntries.filter(e=>e.periodo==='Manhã');
+  const tarde = dayEntries.filter(e=>e.periodo==='Tarde');
+  const diaTodo = dayEntries.filter(e=>e.periodo==='Dia todo');
+
+  let body = renderGroup('🟠 Manhã', manha) + renderGroup('🔵 Tarde', tarde) + renderGroup('🟣 Dia todo', diaTodo);
+  if(!body) body = '<div class="empty-state"><div class="big">🗓️</div><p>Nenhuma saída registrada neste dia.</p></div>';
+  document.getElementById('dayModalBody').innerHTML = body;
+
+  document.getElementById('dayModalAddBtn').onclick = ()=>{
+    closeDayModal();
+    switchTab('registrar');
+    resetForm();
+    document.getElementById('f_data').value = dateStr;
+  };
+
+  document.getElementById('dayModalOverlay').classList.add('show');
+}
+function closeDayModal(){
+  document.getElementById('dayModalOverlay').classList.remove('show');
+}
+
+/* ==================== REGISTRAR / EDITAR ==================== */
+function handleSubmitEntry(e){
+  e.preventDefault();
+  const data = {
+    data: document.getElementById('f_data').value,
+    periodo: document.getElementById('f_periodo').value,
+    tipo: document.getElementById('f_tipo').value,
+    imovel: document.getElementById('f_imovel').value.trim(),
+    cliente: document.getElementById('f_cliente').value.trim(),
+    quemPaga: document.getElementById('f_quemPaga').value.trim(),
+    valor: document.getElementById('f_valor').value.trim(),
+    protocolo: document.getElementById('f_protocolo').value.trim(),
+    descricao: document.getElementById('f_descricao').value.trim(),
+  };
+  const editingId = document.getElementById('editingId').value;
+  if(editingId){
+    const en = entries.find(x=>x.id===editingId);
+    if(en){
+      Object.assign(en, data);
+      saveEntries();
+      showSuccess('Saída de '+formatDateBR(en.data)+' atualizada com sucesso.');
+    }
+  } else {
+    const novaEntrada = Object.assign({ id: uid(), createdAt: new Date().toISOString() }, data);
+    entries.push(novaEntrada);
+    saveEntries();
+    showSuccess('Saída registrada para '+formatDateBR(novaEntrada.data)+'.');
+  }
+  resetForm();
+  renderCalendar();
+  renderReport();
+}
+function showSuccess(text){
+  const banner = document.getElementById('successBanner');
+  document.getElementById('successText').innerHTML = '✅ '+text;
+  banner.classList.add('show');
+}
+function dismissSuccess(){ document.getElementById('successBanner').classList.remove('show'); }
+function resetForm(){
+  document.getElementById('entryForm').reset();
+  document.getElementById('editingId').value='';
+  document.getElementById('submitBtn').textContent = 'Registrar Saída';
+  document.getElementById('f_data').value = ymd(today.getFullYear(), today.getMonth(), today.getDate());
+}
+function editEntry(id){
+  const en = entries.find(x=>x.id===id);
+  if(!en) return;
+  closeDayModal();
+  switchTab('registrar');
+  document.getElementById('editingId').value = en.id;
+  document.getElementById('f_data').value = en.data;
+  document.getElementById('f_periodo').value = en.periodo;
+  document.getElementById('f_tipo').value = en.tipo;
+  document.getElementById('f_imovel').value = en.imovel;
+  document.getElementById('f_cliente').value = en.cliente;
+  document.getElementById('f_quemPaga').value = en.quemPaga;
+  document.getElementById('f_valor').value = en.valor;
+  document.getElementById('f_protocolo').value = en.protocolo;
+  document.getElementById('f_descricao').value = en.descricao;
+  document.getElementById('submitBtn').textContent = 'Salvar Alterações';
+}
+function deleteEntry(id){
+  const en = entries.find(x=>x.id===id);
+  if(!en) return;
+  const ok = confirm('Excluir esta saída de '+formatDateBR(en.data)+'? Essa ação não pode ser desfeita.');
+  if(!ok) return;
+  entries = entries.filter(x=>x.id!==id);
+  saveEntries();
+  renderCalendar();
+  renderReport();
+  if(currentModalDate) openDayModal(currentModalDate);
+}
+
+/* ==================== RELATÓRIO MENSAL ==================== */
+function entriesForMonth(){
+  const prefix = viewYear+'-'+pad(viewMonth+1,2);
+  return entries.filter(e=>e.data && e.data.startsWith(prefix));
+}
+function renderReport(){
+  const monthEntries = entriesForMonth();
+  const servicos = monthEntries.filter(e=>e.tipo==='Serviço');
+  const orcamentos = monthEntries.filter(e=>e.tipo==='Orçamento');
+  const verificacoes = monthEntries.filter(e=>e.tipo==='Verificação');
+
+  const diasTrabalhados = new Set(monthEntries.map(e=>e.data)).size;
+  const diasManha = new Set(monthEntries.filter(e=>e.periodo==='Manhã'||e.periodo==='Dia todo').map(e=>e.data)).size;
+  const diasTarde = new Set(monthEntries.filter(e=>e.periodo==='Tarde'||e.periodo==='Dia todo').map(e=>e.data)).size;
+
+  document.getElementById('metricsGrid').innerHTML = `
+    <div class="metric-card"><div class="val">${servicos.length}</div><div class="lbl">🧱 Serviços executados</div></div>
+    <div class="metric-card"><div class="val">${orcamentos.length}</div><div class="lbl">📐 Orçamentos</div></div>
+    <div class="metric-card"><div class="val">${verificacoes.length}</div><div class="lbl">🔍 Verificações</div></div>
+    <div class="metric-card"><div class="val">${diasTrabalhados}</div><div class="lbl">📅 Dias trabalhados</div></div>
+    <div class="metric-card"><div class="val">${diasManha}</div><div class="lbl">🟠 Períodos manhã</div></div>
+    <div class="metric-card"><div class="val">${diasTarde}</div><div class="lbl">🔵 Períodos tarde</div></div>
+  `;
+
+  const totalArrecadado = servicos.reduce((sum,e)=>sum+parseValor(e.valor),0);
+  const totalOrcado = orcamentos.reduce((sum,e)=>sum+parseValor(e.valor),0);
+  const resultado = totalArrecadado - salarioFixo;
+
+  document.getElementById('financeCard').innerHTML = `
+    <div class="finance-row"><span>💰 Total arrecadado (serviços executados)</span><span class="val-pos">${formatCurrency(totalArrecadado)}</span></div>
+    <div class="finance-row"><span>👷 Salário fixo do Sr. Dedé</span><span class="val-neg">- ${formatCurrency(salarioFixo)}</span></div>
+    <div class="finance-row total"><span>🏢 Resultado para a imobiliária</span><span class="${resultado>=0?'val-pos':'val-neg'}">${formatCurrency(resultado)}</span></div>
+    <div class="finance-row" style="border-top:1px dashed var(--border);margin-top:6px;padding-top:10px;"><span style="color:var(--muted);font-size:13px;">📐 Total orçado (referência, não incluído no cálculo acima)</span><span style="color:var(--muted);font-size:13px;">${formatCurrency(totalOrcado)}</span></div>
+    <div class="salario-edit">
+      <label>Salário fixo mensal:</label>
+      <input type="text" id="salarioInput" value="${salarioFixo.toFixed(2).replace('.',',')}" onchange="updateSalario()">
+    </div>
+  `;
+
+  function buildTable(list, cols){
+    if(list.length===0) return '<p style="color:var(--muted);font-size:13px;">Nenhum registro neste mês.</p>';
+    return `<table class="report-table"><thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead><tbody>
+      ${list.map(e=>`<tr>${cols.map(c=>`<td>${c.render(e)}</td>`).join('')}</tr>`).join('')}
+    </tbody></table>`;
+  }
+  const colsBase = [
+    {label:'Data', render:e=>formatDateBR(e.data)},
+    {label:'Período', render:e=>e.periodo},
+    {label:'Imóvel', render:e=>escapeHtml(e.imovel)},
+    {label:'Cliente', render:e=>escapeHtml(e.cliente)},
+    {label:'Quem paga', render:e=>escapeHtml(e.quemPaga)||'—'},
+    {label:'Valor', render:e=>e.valor?formatCurrency(parseValor(e.valor)):'—'},
+    {label:'Protocolo', render:e=>escapeHtml(e.protocolo)||'—'},
+  ];
+  document.getElementById('tableServicos').innerHTML = buildTable(servicos, colsBase);
+  document.getElementById('tableOrcamentos').innerHTML = buildTable(orcamentos, colsBase);
+  document.getElementById('tableVerificacoes').innerHTML = buildTable(verificacoes, colsBase);
+}
+function updateSalario(){
+  const v = parseValor(document.getElementById('salarioInput').value);
+  salarioFixo = v || 0;
+  saveSalario();
+  renderReport();
+}
+
+/* ==================== BACKUP ==================== */
+function openBackup(){ document.getElementById('backupOverlay').classList.add('show'); }
+function closeBackup(){ document.getElementById('backupOverlay').classList.remove('show'); }
+function exportData(){
+  const payload = { entries, salarioFixo, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `agenda-dede-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const payload = JSON.parse(e.target.result);
+      const ok = confirm('Importar este arquivo substituirá os dados atuais. Deseja continuar?');
+      if(!ok) return;
+      if(Array.isArray(payload.entries)) entries = payload.entries;
+      if(typeof payload.salarioFixo === 'number') salarioFixo = payload.salarioFixo;
+      saveEntries();
+      saveSalario();
+      renderCalendar();
+      renderReport();
+      closeBackup();
+    }catch(err){
+      alert('Não foi possível ler este arquivo. Verifique se é um backup válido.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* ==================== INIT ==================== */
+document.getElementById('dayModalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='dayModalOverlay') closeDayModal(); });
+document.getElementById('backupOverlay').addEventListener('click', (e)=>{ if(e.target.id==='backupOverlay') closeBackup(); });
+
+if(!storageAvailable){
+  const warn = document.createElement('div');
+  warn.style.cssText = 'background:#fef3c7;color:#92400e;padding:10px 28px;font-size:13px;text-align:center;';
+  warn.textContent = '⚠️ Este navegador não permite salvar dados localmente neste momento. Para uso diário com salvamento automático, baixe o arquivo e abra-o diretamente no seu navegador (Chrome/Edge). Use o backup em JSON para não perder os dados desta sessão.';
+  document.body.insertBefore(warn, document.body.firstChild);
+}
+
+document.getElementById('f_data').value = ymd(today.getFullYear(), today.getMonth(), today.getDate());
+renderCalendar();
+renderReport();
+</script>
+</body>
+</html>
