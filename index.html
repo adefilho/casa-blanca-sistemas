@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Blanca Imobiliária — Sistemas</title>
+<style>
+  :root{
+    --brand:#0f766e;
+    --brand-dark:#0b4f4a;
+    --bg:#f1f5f9;
+    --card-bg:#ffffff;
+    --text:#1e293b;
+    --muted:#64748b;
+    --border:#e2e8f0;
+    --radius:10px;
+    --shadow:0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{background:linear-gradient(135deg,var(--brand-dark),var(--brand));color:#fff;padding:28px;}
+  header h1{margin:0;font-size:22px;}
+  header p{margin:6px 0 0;font-size:14px;opacity:.85;}
+  main{max-width:900px;margin:0 auto;padding:24px 20px 60px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:20px;}
+  a.card{display:block;background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;text-decoration:none;color:var(--text);border:1px solid var(--border);transition:.15s;}
+  a.card:hover{border-color:var(--brand);transform:translateY(-1px);}
+  a.card .icon{font-size:26px;}
+  a.card h2{margin:8px 0 4px;font-size:16px;}
+  a.card p{margin:0;font-size:13px;color:var(--muted);}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏠 Casa Blanca Imobiliária</h1>
+  <p>Sistemas internos</p>
+</header>
+<main>
+  <div class="grid">
+    <a class="card" href="casa-blanca-agenda-dede.html">
+      <div class="icon">🧱</div>
+      <h2>Agenda Sr. Dedé</h2>
+      <p>Agenda e financeiro dos serviços do pedreiro.</p>
+    </a>
+    <a class="card" href="casa-blanca-manutencao.html">
+      <div class="icon">🛠️</div>
+      <h2>Gestão de Manutenção</h2>
+      <p>Manutenção dos imóveis.</p>
+    </a>
+    <a class="card" href="casa-blanca-minhas-demandas.html">
+      <div class="icon">🗒️</div>
+      <h2>Minhas Demandas</h2>
+      <p>Demandas internas, prioridades e acompanhamento.</p>
+    </a>
+    <a class="card" href="casa-blanca-servicos-proprietario.html">
+      <div class="icon">🧾</div>
+      <h2>Serviços por Proprietário</h2>
+      <p>Controle de serviços e despesas por proprietário.</p>
+    </a>
+  </div>
+</main>
+</body>
+</html>
