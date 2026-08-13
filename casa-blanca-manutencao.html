@@ -1080,7 +1080,7 @@ async function pushToCloud(){
   }catch(e){ setCloudChip('offline','sem conexão'); }
 }
 async function pullFromCloud(manual){
-  if(!cloudConfigured()){ setCloudChip('off','desligada'); return; }
+  if(!cloudConfigured()){ setCloudChip('off','desligada'); return false; }
   if(manual) setCloudChip('syncing','sincronizando...');
   try{
     const url = cloudConfig.url + '?sistema=manutencao&token=' + encodeURIComponent(cloudConfig.token);
@@ -1092,10 +1092,12 @@ async function pullFromCloud(manual){
         if(json.data){ try{ applyRemoteSnapshot(JSON.parse(json.data)); }catch(e){} }
       }
       setCloudChip('online','conectado');
+      return !!json.data;
     } else {
       setCloudChip('error', json.error || 'erro ao ler');
+      return false;
     }
-  }catch(e){ setCloudChip('offline','sem conexão'); }
+  }catch(e){ setCloudChip('offline','sem conexão'); return false; }
 }
 function startAutoSync(){
   if(syncIntervalHandle) clearInterval(syncIntervalHandle);
@@ -1115,14 +1117,15 @@ async function testCloudConnection(){
     document.getElementById('cloudStatusText').textContent = '🔴 Não foi possível conectar. Confira a URL.';
   }
 }
-function saveCloudConfigAndSync(){
+async function saveCloudConfigAndSync(){
   const url = document.getElementById('cloudUrl').value.trim();
   const token = document.getElementById('cloudToken').value.trim();
   cloudConfig = {url, token};
   saveCloudConfigToStorage(cloudConfig);
   lastKnownTimestamp = null;
+  const remoteHasData = await pullFromCloud(true);
+  if(!remoteHasData) pushToCloud();
   startAutoSync();
-  pushToCloud();
 }
 function disconnectCloud(){
   cloudConfig = {url:'', token:''};
