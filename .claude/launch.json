@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pagamentos-prestadores",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["C:\\Users\\CASA BLANCA\\AppData\\Roaming\\npm\\node_modules\\http-server\\bin\\http-server", "pagamentos-prestadores", "-p", "8532", "-c-1"],
+      "port": 8532
+    }
+  ]
+}
