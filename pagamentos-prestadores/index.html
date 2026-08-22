@@ -210,6 +210,10 @@
           <label>Descrição do serviço *</label>
           <textarea id="f_descricao" required placeholder="Ex: Retelhamento e retirada de vazamento do banheiro"></textarea>
         </div>
+        <div class="field full">
+          <label>Descrição para a Nota de Serviço <span class="hint">(opcional — deixe em branco para usar a mesma descrição acima)</span></label>
+          <textarea id="f_descricaoNota" placeholder="Só preencha se a nota de serviço precisar de um texto diferente do recibo"></textarea>
+        </div>
         <div class="form-actions">
           <button type="button" class="btn secondary" onclick="resetLancForm()">Cancelar</button>
           <button type="submit" class="btn" id="submitBtn">Registrar Saída</button>
@@ -239,6 +243,7 @@
         </div>
         <button class="btn" onclick="carregarRelatorio()">Buscar</button>
         <button class="btn secondary" onclick="setSemanaAtual()">Semana atual</button>
+        <button class="btn secondary" onclick="gerarRelatorioSemanal()">📄 Relatório para PIX</button>
       </div>
       <div class="metrics-grid" id="relatorioMetrics"></div>
       <div id="relatorioBody"></div>
@@ -436,7 +441,8 @@ document.getElementById('lancForm').addEventListener('submit', async (e)=>{
     data: document.getElementById('f_data').value,
     valorPago: parseFloat(document.getElementById('f_valorPago').value)||0,
     valorCobrado: parseFloat(document.getElementById('f_valorCobrado').value)||0,
-    descricao: document.getElementById('f_descricao').value.trim()
+    descricao: document.getElementById('f_descricao').value.trim(),
+    descricaoNota: document.getElementById('f_descricaoNota').value.trim()
   };
   const editingId = document.getElementById('editingId').value;
   try{
@@ -534,6 +540,7 @@ window.editarLancamento = function(id){
   document.getElementById('f_valorPago').value = it.valorPago;
   document.getElementById('f_valorCobrado').value = it.valorCobrado;
   document.getElementById('f_descricao').value = it.descricao;
+  document.getElementById('f_descricaoNota').value = it.descricaoNota||'';
   document.getElementById('submitBtn').textContent = 'Salvar Alterações';
 };
 
@@ -665,6 +672,7 @@ window.gerarRecibo = function(id){
 const PAGADOR_ORDEM = ['Proprietario','Locatario','Imobiliaria'];
 const PAGADOR_SIGLA = { Proprietario:'Prop.', Locatario:'Loct.', Imobiliaria:'Imob.' };
 function montarNotaServicoHtml(it){
+  const descNota = it.descricaoNota ? it.descricaoNota : it.descricao;
   const linhasPagador = PAGADOR_ORDEM.map(p=>{
     const marcado = p===it.pagador;
     const nome = (marcado && it.pagadorNome) ? ` — ${escapeHtml(it.pagadorNome)}` : '';
@@ -678,7 +686,7 @@ function montarNotaServicoHtml(it){
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         <tr><td style="padding:6px 0;"><b>Prestador:</b> ${escapeHtml(it.prestador)}</td></tr>
         <tr><td style="padding:6px 0;"><b>Imóvel:</b> ${escapeHtml(it.imovel)||'—'}</td></tr>
-        <tr><td style="padding:6px 0;"><b>Serviço:</b> ${escapeHtml(it.descricao)}</td></tr>
+        <tr><td style="padding:6px 0;"><b>Serviço:</b> ${escapeHtml(descNota)}</td></tr>
       </table>
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:14px;border:1px solid #000;">
         <tr>
@@ -686,7 +694,7 @@ function montarNotaServicoHtml(it){
           <th style="border:1px solid #000;padding:8px;width:130px;">VALOR R$</th>
         </tr>
         <tr>
-          <td style="border:1px solid #000;padding:8px;min-height:60px;">${escapeHtml(it.descricao)}</td>
+          <td style="border:1px solid #000;padding:8px;min-height:60px;">${escapeHtml(descNota)}</td>
           <td style="border:1px solid #000;padding:8px;text-align:right;">${formatCurrency(it.valorPago)}</td>
         </tr>
         <tr>
@@ -705,6 +713,54 @@ window.gerarNotaServico = function(id){
   const it = (window._relCache||[]).find(x=>x.id===id) || (window._meusCache||[]).find(x=>x.id===id);
   if(!it) return;
   abrirPreviaImpressao(montarNotaServicoHtml(it));
+};
+
+/* ==================== RELATÓRIO SEMANAL (PARA PIX) ==================== */
+window.gerarRelatorioSemanal = function(){
+  const items = window._relCache || [];
+  const de = document.getElementById('rel_de').value;
+  const ate = document.getElementById('rel_ate').value;
+  if(items.length===0){
+    alert('Não há lançamentos no período selecionado. Clique em "Buscar" primeiro.');
+    return;
+  }
+  const porPrestador = {};
+  items.forEach(it=>{
+    if(!porPrestador[it.prestador]) porPrestador[it.prestador] = { valorPago:0, qtd:0 };
+    porPrestador[it.prestador].valorPago += it.valorPago;
+    porPrestador[it.prestador].qtd += 1;
+  });
+  const nomes = Object.keys(porPrestador).sort();
+  const totalGeral = nomes.reduce((s,n)=>s+porPrestador[n].valorPago,0);
+
+  const linhas = nomes.map(n=>`
+    <tr>
+      <td style="border:1px solid #000;padding:8px;">${escapeHtml(n)}</td>
+      <td style="border:1px solid #000;padding:8px;text-align:center;">${porPrestador[n].qtd}</td>
+      <td style="border:1px solid #000;padding:8px;text-align:right;">${formatCurrency(porPrestador[n].valorPago)}</td>
+    </tr>`).join('');
+
+  const html = `<div class="recibo-box" style="max-width:680px;">
+      <div class="r-header">
+        <img src="${LOGO_B64}">
+        <h1>RELATÓRIO SEMANAL — PAGAMENTOS</h1>
+      </div>
+      <p style="text-align:center;margin-top:-6px;">Período: <b>${formatDateBR(de)} a ${formatDateBR(ate)}</b></p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:10px;border:1px solid #000;">
+        <tr>
+          <th style="border:1px solid #000;padding:8px;text-align:left;">PRESTADOR</th>
+          <th style="border:1px solid #000;padding:8px;width:90px;">SERVIÇOS</th>
+          <th style="border:1px solid #000;padding:8px;width:150px;">VALOR A PAGAR</th>
+        </tr>
+        ${linhas}
+        <tr>
+          <td style="border:1px solid #000;padding:8px;text-align:right;" colspan="2"><b>TOTAL GERAL</b></td>
+          <td style="border:1px solid #000;padding:8px;text-align:right;"><b>${formatCurrency(totalGeral)}</b></td>
+        </tr>
+      </table>
+      <p style="font-size:12px;color:#555;margin-top:14px;">Valores referentes ao pagamento dos prestadores (PIX). Gerado em ${formatDateBR(todayISO())}.</p>
+    </div>`;
+  abrirPreviaImpressao(html);
 };
 
 /* ==================== EQUIPE (ADMIN) ==================== */
