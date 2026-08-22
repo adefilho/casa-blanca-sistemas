@@ -191,6 +191,10 @@
           </select>
         </div>
         <div class="field">
+          <label>Nome do Proprietário/Locatário</label>
+          <input type="text" id="f_pagadorNome" placeholder="Deixe em branco se o pagador for a Imobiliária">
+        </div>
+        <div class="field">
           <label>Data do serviço *</label>
           <input type="date" id="f_data" required>
         </div>
@@ -428,6 +432,7 @@ document.getElementById('lancForm').addEventListener('submit', async (e)=>{
     prestador: document.getElementById('f_prestador').value.trim(),
     imovel: document.getElementById('f_imovel').value.trim(),
     pagador: document.getElementById('f_pagador').value,
+    pagadorNome: document.getElementById('f_pagadorNome').value.trim(),
     data: document.getElementById('f_data').value,
     valorPago: parseFloat(document.getElementById('f_valorPago').value)||0,
     valorCobrado: parseFloat(document.getElementById('f_valorCobrado').value)||0,
@@ -524,6 +529,7 @@ window.editarLancamento = function(id){
   document.getElementById('f_prestador').value = it.prestador;
   document.getElementById('f_imovel').value = it.imovel;
   document.getElementById('f_pagador').value = it.pagador;
+  document.getElementById('f_pagadorNome').value = it.pagadorNome||'';
   document.getElementById('f_data').value = it.data;
   document.getElementById('f_valorPago').value = it.valorPago;
   document.getElementById('f_valorCobrado').value = it.valorCobrado;
@@ -661,7 +667,8 @@ const PAGADOR_SIGLA = { Proprietario:'Prop.', Locatario:'Loct.', Imobiliaria:'Im
 function montarNotaServicoHtml(it){
   const linhasPagador = PAGADOR_ORDEM.map(p=>{
     const marcado = p===it.pagador;
-    return `<tr><td style="width:26px;text-align:center;font-weight:700;">${marcado?'X':''}</td><td><b>${PAGADOR_SIGLA[p]}</b></td></tr>`;
+    const nome = (marcado && it.pagadorNome) ? ` — ${escapeHtml(it.pagadorNome)}` : '';
+    return `<tr><td style="width:26px;text-align:center;font-weight:700;">${marcado?'X':''}</td><td><b>${PAGADOR_SIGLA[p]}</b>${nome}</td></tr>`;
   }).join('');
   return `<div class="recibo-box" style="max-width:600px;">
       <div class="r-header">
