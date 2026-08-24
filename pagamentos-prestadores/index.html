@@ -243,7 +243,7 @@
         </div>
         <button class="btn" onclick="carregarRelatorio()">Buscar</button>
         <button class="btn secondary" onclick="setSemanaAtual()">Semana atual</button>
-        <button class="btn secondary" onclick="gerarRelatorioSemanal()">📄 Relatório para PIX</button>
+        <button class="btn secondary" onclick="gerarRelatorioSemanal()">📄 Relatório Semanal</button>
       </div>
       <div class="metrics-grid" id="relatorioMetrics"></div>
       <div id="relatorioBody"></div>
@@ -726,21 +726,29 @@ window.gerarRelatorioSemanal = function(){
   }
   const porPrestador = {};
   items.forEach(it=>{
-    if(!porPrestador[it.prestador]) porPrestador[it.prestador] = { valorPago:0, qtd:0 };
+    if(!porPrestador[it.prestador]) porPrestador[it.prestador] = { valorPago:0, valorCobrado:0, qtd:0 };
     porPrestador[it.prestador].valorPago += it.valorPago;
+    porPrestador[it.prestador].valorCobrado += it.valorCobrado;
     porPrestador[it.prestador].qtd += 1;
   });
   const nomes = Object.keys(porPrestador).sort();
-  const totalGeral = nomes.reduce((s,n)=>s+porPrestador[n].valorPago,0);
+  const totalPago = nomes.reduce((s,n)=>s+porPrestador[n].valorPago,0);
+  const totalCobrado = nomes.reduce((s,n)=>s+porPrestador[n].valorCobrado,0);
+  const totalLucro = totalCobrado - totalPago;
 
-  const linhas = nomes.map(n=>`
-    <tr>
+  const linhas = nomes.map(n=>{
+    const p = porPrestador[n];
+    const lucro = p.valorCobrado - p.valorPago;
+    return `<tr>
       <td style="border:1px solid #000;padding:8px;">${escapeHtml(n)}</td>
-      <td style="border:1px solid #000;padding:8px;text-align:center;">${porPrestador[n].qtd}</td>
-      <td style="border:1px solid #000;padding:8px;text-align:right;">${formatCurrency(porPrestador[n].valorPago)}</td>
-    </tr>`).join('');
+      <td style="border:1px solid #000;padding:8px;text-align:center;">${p.qtd}</td>
+      <td style="border:1px solid #000;padding:8px;text-align:right;">${formatCurrency(p.valorCobrado)}</td>
+      <td style="border:1px solid #000;padding:8px;text-align:right;">${formatCurrency(p.valorPago)}</td>
+      <td style="border:1px solid #000;padding:8px;text-align:right;">${formatCurrency(lucro)}</td>
+    </tr>`;
+  }).join('');
 
-  const html = `<div class="recibo-box" style="max-width:680px;">
+  const html = `<div class="recibo-box" style="max-width:760px;">
       <div class="r-header">
         <img src="${LOGO_B64}">
         <h1>RELATÓRIO SEMANAL — PAGAMENTOS</h1>
@@ -749,16 +757,20 @@ window.gerarRelatorioSemanal = function(){
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:10px;border:1px solid #000;">
         <tr>
           <th style="border:1px solid #000;padding:8px;text-align:left;">PRESTADOR</th>
-          <th style="border:1px solid #000;padding:8px;width:90px;">SERVIÇOS</th>
-          <th style="border:1px solid #000;padding:8px;width:150px;">VALOR A PAGAR</th>
+          <th style="border:1px solid #000;padding:8px;width:80px;">SERVIÇOS</th>
+          <th style="border:1px solid #000;padding:8px;width:130px;">COBRADO</th>
+          <th style="border:1px solid #000;padding:8px;width:130px;">PAGO</th>
+          <th style="border:1px solid #000;padding:8px;width:130px;">LUCRO</th>
         </tr>
         ${linhas}
         <tr>
           <td style="border:1px solid #000;padding:8px;text-align:right;" colspan="2"><b>TOTAL GERAL</b></td>
-          <td style="border:1px solid #000;padding:8px;text-align:right;"><b>${formatCurrency(totalGeral)}</b></td>
+          <td style="border:1px solid #000;padding:8px;text-align:right;"><b>${formatCurrency(totalCobrado)}</b></td>
+          <td style="border:1px solid #000;padding:8px;text-align:right;"><b>${formatCurrency(totalPago)}</b></td>
+          <td style="border:1px solid #000;padding:8px;text-align:right;"><b>${formatCurrency(totalLucro)}</b></td>
         </tr>
       </table>
-      <p style="font-size:12px;color:#555;margin-top:14px;">Valores referentes ao pagamento dos prestadores (PIX). Gerado em ${formatDateBR(todayISO())}.</p>
+      <p style="font-size:12px;color:#555;margin-top:14px;">Gerado em ${formatDateBR(todayISO())}.</p>
     </div>`;
   abrirPreviaImpressao(html);
 };
