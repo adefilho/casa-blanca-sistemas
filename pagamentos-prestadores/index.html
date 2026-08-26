@@ -55,6 +55,11 @@
   .field.full{grid-column:1/-1;}
   .field label{font-size:13px;font-weight:600;color:var(--text);}
   .field .hint{font-size:12px;color:var(--muted);font-weight:400;}
+  .prestador-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;z-index:50;margin-top:4px;}
+  .prestador-dropdown.show{display:block;}
+  .prestador-dropdown .pd-item{padding:9px 12px;font-size:14px;cursor:pointer;}
+  .prestador-dropdown .pd-item:hover{background:var(--brand-light);}
+  .prestador-dropdown .pd-empty{padding:9px 12px;font-size:13px;color:var(--muted);}
   .field input, .field select, .field textarea{padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text);}
   .field textarea{resize:vertical;min-height:60px;}
   .form-actions{grid-column:1/-1;display:flex;gap:10px;justify-content:flex-end;}
@@ -161,6 +166,7 @@
     <button class="tab-btn active" data-tab="lancar" onclick="switchTab('lancar')">➕ Lançar Saída</button>
     <button class="tab-btn" data-tab="meus" onclick="switchTab('meus')">📋 Meus Lançamentos</button>
     <button class="tab-btn admin-only" data-tab="relatorio" onclick="switchTab('relatorio')" style="display:none;">📊 Relatório</button>
+    <button class="tab-btn admin-only" data-tab="prestadores" onclick="switchTab('prestadores')" style="display:none;">🧰 Prestadores</button>
     <button class="tab-btn admin-only" data-tab="equipe" onclick="switchTab('equipe')" style="display:none;">👥 Equipe</button>
   </nav>
 
@@ -173,10 +179,12 @@
       </div>
       <form class="form-grid" id="lancForm">
         <input type="hidden" id="editingId" value="">
-        <div class="field">
+        <div class="field" style="position:relative;">
           <label>Prestador *</label>
-          <input type="text" id="f_prestador" required list="prestadoresList" placeholder="Nome do prestador">
-          <datalist id="prestadoresList"></datalist>
+          <input type="text" id="f_prestadorBusca" autocomplete="off" placeholder="Digite para buscar o prestador cadastrado...">
+          <input type="hidden" id="f_prestador">
+          <div id="prestadorDropdown" class="prestador-dropdown"></div>
+          <span class="hint" id="prestadorHint"></span>
         </div>
         <div class="field">
           <label>Imóvel / Endereço</label>
@@ -247,6 +255,24 @@
       </div>
       <div class="metrics-grid" id="relatorioMetrics"></div>
       <div id="relatorioBody"></div>
+    </section>
+
+    <!-- PRESTADORES (admin) -->
+    <section class="tab-panel" id="tab-prestadores">
+      <form class="form-grid" id="prestadorForm" style="margin-bottom:20px;">
+        <div class="field full">
+          <label>Nome do prestador *</label>
+          <input type="text" id="pr_nome" required placeholder="Ex: Francisco Paulo de Almeida">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn">Cadastrar Prestador</button>
+        </div>
+      </form>
+      <div class="error-banner" id="prestadorError"></div>
+      <div class="field" style="max-width:400px;margin-bottom:14px;">
+        <input type="text" id="pr_busca" placeholder="🔎 Buscar na lista..." oninput="renderPrestadoresList()">
+      </div>
+      <div id="prestadoresListBody"></div>
     </section>
 
     <!-- EQUIPE (admin) -->
@@ -410,8 +436,9 @@ onAuthStateChanged(auth, async (user)=>{
     document.getElementById('whoRole').textContent = currentUser.role==='admin' ? 'Admin' : 'Funcionário';
     document.querySelectorAll('.admin-only').forEach(el=> el.style.display = currentUser.role==='admin' ? '' : 'none');
     document.getElementById('f_data').value = todayISO();
+    switchTab('lancar');
     loadMeusLancamentos();
-    loadPrestadoresDatalist();
+    loadPrestadoresCache();
   } else {
     currentUser = null;
     document.getElementById('appScreen').style.display = 'none';
@@ -421,20 +448,30 @@ onAuthStateChanged(auth, async (user)=>{
 });
 
 /* ==================== TABS ==================== */
+const ADMIN_ONLY_TABS = ['relatorio','prestadores','equipe'];
 window.switchTab = function(name){
+  if(ADMIN_ONLY_TABS.includes(name) && (!currentUser || currentUser.role!=='admin')) name = 'lancar';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
   document.querySelectorAll('.tab-panel').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(name==='meus') loadMeusLancamentos();
   if(name==='relatorio' && !document.getElementById('rel_de').value) setSemanaAtual();
   if(name==='equipe') loadEquipeList();
+  if(name==='prestadores') loadPrestadoresCache().then(renderPrestadoresList);
 };
 
 /* ==================== LANÇAMENTO ==================== */
 document.getElementById('lancForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+  const prestadorSelecionado = document.getElementById('f_prestador').value.trim();
+  if(!prestadorSelecionado){
+    document.getElementById('prestadorHint').textContent = '⚠️ Selecione um prestador da lista (clique em uma sugestão).';
+    document.getElementById('prestadorHint').style.color = 'var(--neg)';
+    document.getElementById('f_prestadorBusca').focus();
+    return;
+  }
   const payload = {
-    prestador: document.getElementById('f_prestador').value.trim(),
+    prestador: prestadorSelecionado,
     imovel: document.getElementById('f_imovel').value.trim(),
     pagador: document.getElementById('f_pagador').value,
     pagadorNome: document.getElementById('f_pagadorNome').value.trim(),
@@ -458,7 +495,6 @@ document.getElementById('lancForm').addEventListener('submit', async (e)=>{
     }
     resetLancForm();
     loadMeusLancamentos();
-    loadPrestadoresDatalist();
   }catch(err){
     alert('Erro ao salvar: ' + err.message);
   }
@@ -476,18 +512,130 @@ window.resetLancForm = function(){
   document.getElementById('editingId').value = '';
   document.getElementById('submitBtn').textContent = 'Registrar Saída';
   document.getElementById('f_data').value = todayISO();
+  document.getElementById('f_prestador').value = '';
+  document.getElementById('prestadorHint').textContent = '';
+  document.getElementById('prestadorDropdown').classList.remove('show');
 };
 
-async function loadPrestadoresDatalist(){
+/* ==================== CADASTRO DE PRESTADORES ==================== */
+let prestadoresCache = [];
+async function loadPrestadoresCache(){
   try{
-    const q = query(collection(db,'lancamentos'), where('criadoPor','==',currentUser.uid));
-    const snap = await getDocs(q);
-    const nomes = new Set();
-    snap.forEach(d=> nomes.add(d.data().prestador));
-    const dl = document.getElementById('prestadoresList');
-    dl.innerHTML = Array.from(nomes).map(n=>`<option value="${escapeHtml(n)}">`).join('');
+    const snap = await getDocs(collection(db,'prestadores'));
+    prestadoresCache = [];
+    snap.forEach(d=> prestadoresCache.push({ id:d.id, nome:d.data().nome }));
+    prestadoresCache.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
   }catch(e){}
+  return prestadoresCache;
 }
+
+function filtrarPrestadores(termo){
+  const t = termo.trim().toLowerCase();
+  if(!t) return prestadoresCache.slice(0,8);
+  return prestadoresCache.filter(p=>p.nome.toLowerCase().includes(t)).slice(0,8);
+}
+function renderPrestadorDropdown(lista){
+  const dd = document.getElementById('prestadorDropdown');
+  if(prestadoresCache.length===0){
+    dd.innerHTML = '<div class="pd-empty">Nenhum prestador cadastrado ainda. Peça ao administrador para cadastrar na aba "Prestadores".</div>';
+  } else if(lista.length===0){
+    dd.innerHTML = '<div class="pd-empty">Nenhum prestador encontrado com esse nome.</div>';
+  } else {
+    dd.innerHTML = lista.map(p=>`<div class="pd-item" data-nome="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</div>`).join('');
+  }
+  dd.classList.add('show');
+}
+document.getElementById('f_prestadorBusca').addEventListener('input', (e)=>{
+  document.getElementById('f_prestador').value = '';
+  document.getElementById('prestadorHint').textContent = '';
+  renderPrestadorDropdown(filtrarPrestadores(e.target.value));
+});
+document.getElementById('f_prestadorBusca').addEventListener('focus', (e)=>{
+  renderPrestadorDropdown(filtrarPrestadores(e.target.value));
+});
+document.getElementById('prestadorDropdown').addEventListener('mousedown', (e)=>{
+  const item = e.target.closest('.pd-item');
+  if(!item) return;
+  const nome = item.dataset.nome;
+  document.getElementById('f_prestadorBusca').value = nome;
+  document.getElementById('f_prestador').value = nome;
+  document.getElementById('prestadorHint').textContent = '';
+  document.getElementById('prestadorDropdown').classList.remove('show');
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#f_prestadorBusca') && !e.target.closest('#prestadorDropdown')){
+    document.getElementById('prestadorDropdown').classList.remove('show');
+  }
+});
+
+document.getElementById('prestadorForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const nome = document.getElementById('pr_nome').value.trim();
+  const errEl = document.getElementById('prestadorError');
+  errEl.classList.remove('show');
+  if(!nome) return;
+  await loadPrestadoresCache();
+  const existente = prestadoresCache.find(p=>p.nome.toLowerCase()===nome.toLowerCase());
+  if(existente){
+    errEl.textContent = `⚠️ Já existe um prestador cadastrado com esse nome exato: "${existente.nome}".`;
+    errEl.classList.add('show');
+    return;
+  }
+  try{
+    await addDoc(collection(db,'prestadores'), { nome, criadoEm: new Date().toISOString() });
+    document.getElementById('prestadorForm').reset();
+    await loadPrestadoresCache();
+    renderPrestadoresList();
+  }catch(err){
+    errEl.textContent = 'Erro ao cadastrar: ' + err.message;
+    errEl.classList.add('show');
+  }
+});
+
+window.renderPrestadoresList = function(){
+  const busca = (document.getElementById('pr_busca').value||'').trim().toLowerCase();
+  const body = document.getElementById('prestadoresListBody');
+  const lista = busca ? prestadoresCache.filter(p=>p.nome.toLowerCase().includes(busca)) : prestadoresCache;
+  if(lista.length===0){
+    body.innerHTML = '<div class="empty-state"><div class="big">🧰</div><p>Nenhum prestador cadastrado ainda.</p></div>';
+    return;
+  }
+  body.innerHTML = `<table class="report-table"><thead><tr><th>Nome</th><th></th></tr></thead><tbody>
+    ${lista.map(p=>`<tr>
+      <td>${escapeHtml(p.nome)}</td>
+      <td class="row-actions">
+        <button class="btn secondary small" onclick="editarPrestador('${p.id}')">✏️</button>
+        <button class="btn danger small" onclick="excluirPrestador('${p.id}')">🗑</button>
+      </td>
+    </tr>`).join('')}
+  </tbody></table>`;
+};
+
+window.editarPrestador = async function(id){
+  const p = prestadoresCache.find(x=>x.id===id);
+  if(!p) return;
+  const novoNome = prompt('Corrigir nome do prestador:', p.nome);
+  if(novoNome===null) return;
+  const nomeLimpo = novoNome.trim();
+  if(!nomeLimpo || nomeLimpo===p.nome) return;
+  try{
+    await updateDoc(doc(db,'prestadores',id), { nome: nomeLimpo });
+    await loadPrestadoresCache();
+    renderPrestadoresList();
+  }catch(err){ alert('Erro ao editar: '+err.message); }
+};
+
+window.excluirPrestador = async function(id){
+  const p = prestadoresCache.find(x=>x.id===id);
+  if(!p) return;
+  const ok = confirm(`Remover "${p.nome}" do cadastro? Isso não apaga lançamentos já feitos, só some da lista de busca.`);
+  if(!ok) return;
+  try{
+    await deleteDoc(doc(db,'prestadores',id));
+    await loadPrestadoresCache();
+    renderPrestadoresList();
+  }catch(err){ alert('Erro ao remover: '+err.message); }
+};
 
 /* ==================== MEUS LANÇAMENTOS ==================== */
 async function loadMeusLancamentos(){
@@ -533,6 +681,7 @@ window.editarLancamento = function(id){
   switchTab('lancar');
   document.getElementById('editingId').value = id;
   document.getElementById('f_prestador').value = it.prestador;
+  document.getElementById('f_prestadorBusca').value = it.prestador;
   document.getElementById('f_imovel').value = it.imovel;
   document.getElementById('f_pagador').value = it.pagador;
   document.getElementById('f_pagadorNome').value = it.pagadorNome||'';
