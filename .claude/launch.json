@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": ["C:\\Users\\CASA BLANCA\\AppData\\Roaming\\npm\\node_modules\\http-server\\bin\\http-server", "pagamentos-prestadores", "-p", "8532", "-c-1"],
       "port": 8532
+    },
+    {
+      "name": "sistemas-raiz",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["C:\\Users\\CASA BLANCA\\AppData\\Roaming\\npm\\node_modules\\http-server\\bin\\http-server", ".", "-p", "8533", "-c-1"],
+      "port": 8533
     }
   ]
 }

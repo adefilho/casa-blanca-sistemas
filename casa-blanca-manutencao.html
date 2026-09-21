@@ -539,9 +539,49 @@ function loadDemands(){
     return raw ? JSON.parse(raw) : [];
   }catch(e){ return []; }
 }
+/* Controle de versões por demanda (para a sincronização por mesclagem):
+   - updatedAt: carimbado automaticamente quando o conteúdo da demanda muda;
+   - deletedIds: "lápides" das demandas excluídas, para a exclusão também sincronizar. */
+const DELETED_KEY = 'cb_manutencao_excluidas_v1';
+const TEMPLATES_TS_KEY = 'cb_manutencao_templates_ts_v1';
+let deletedIds = {};
+let demandHashes = {};
+try{ deletedIds = JSON.parse(localStorage.getItem(DELETED_KEY) || '{}') || {}; }catch(e){ deletedIds = {}; }
+let templatesUpdatedAt = '';
+try{ templatesUpdatedAt = localStorage.getItem(TEMPLATES_TS_KEY) || ''; }catch(e){}
+
+function demandContentKey(d){
+  const copy = Object.assign({}, d); delete copy.updatedAt;
+  return JSON.stringify(copy);
+}
+function demandStamp(d){
+  if(d.updatedAt) return d.updatedAt;
+  let best = d.createdAt || '';
+  (d.history||[]).forEach(h=>{ if(h.date && h.date>best) best = h.date; });
+  (d.acompanhamentos||[]).forEach(a=>{ if(a.createdAt && a.createdAt>best) best = a.createdAt; });
+  return best;
+}
+function rebuildDemandHashes(){
+  demandHashes = {};
+  demands.forEach(d=>{ demandHashes[d.id] = demandContentKey(d); });
+}
 function saveDemands(){
+  const now = new Date().toISOString();
+  const present = {};
+  demands.forEach(d=>{
+    present[d.id] = true;
+    const key = demandContentKey(d);
+    if(demandHashes[d.id] !== key){ d.updatedAt = now; demandHashes[d.id] = key; }
+  });
+  Object.keys(demandHashes).forEach(id=>{
+    if(!present[id]){ deletedIds[id] = now; delete demandHashes[id]; }
+  });
+  persistDemands();
+}
+function persistDemands(){
   if(!storageAvailable) return;
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(demands)); }catch(e){}
+  try{ localStorage.setItem(DELETED_KEY, JSON.stringify(deletedIds)); }catch(e){}
 }
 function loadTemplates(){
   let base = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
@@ -556,11 +596,17 @@ function loadTemplates(){
   return base;
 }
 function saveTemplates(){
+  templatesUpdatedAt = new Date().toISOString();
+  persistTemplates();
+}
+function persistTemplates(){
   if(!storageAvailable) return;
   try{ localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates)); }catch(e){}
+  try{ localStorage.setItem(TEMPLATES_TS_KEY, templatesUpdatedAt); }catch(e){}
 }
 
 demands = loadDemands();
+rebuildDemandHashes();
 templates = loadTemplates();
 
 /* ==================== HELPERS ==================== */
@@ -1042,7 +1088,6 @@ function saveCloudConfigToStorage(cfg){
   try{ localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cfg)); }catch(e){}
 }
 let cloudConfig = loadCloudConfig();
-let lastKnownTimestamp = null;
 let syncIntervalHandle = null;
 
 function cloudConfigured(){ return !!(cloudConfig.url && cloudConfig.token); }
@@ -1054,56 +1099,98 @@ function setCloudChip(state, text){
   chip.textContent = (icons[state]||'⚪') + ' Nuvem: ' + text;
 }
 
-function localSnapshotForCloud(){ return { demands, templates }; }
-function applyRemoteSnapshot(remote){
-  if(Array.isArray(remote.demands)) demands = remote.demands;
-  if(remote.templates) templates = remote.templates;
-  saveDemands();
-  saveTemplates();
-  renderPainel();
-  renderTemplates();
+function localSnapshotForCloud(){
+  return { demands, templates, deletedIds, templatesUpdatedAt };
 }
 
-async function pushToCloud(){
-  if(!cloudConfigured()) return;
-  setCloudChip('syncing','sincronizando...');
+/* Mescla o que veio da nuvem com o que existe neste computador, demanda por demanda.
+   Nada some por causa de outro computador: vale a versão mais recente de cada demanda,
+   e só some quem foi realmente excluído (lápide em deletedIds). */
+function mergeRemoteIntoLocal(remote){
+  const remoteDeleted = remote.deletedIds || {};
+  Object.keys(remoteDeleted).forEach(id=>{ if(!deletedIds[id]) deletedIds[id] = remoteDeleted[id]; });
+
+  const byId = {};
+  (Array.isArray(remote.demands) ? remote.demands : []).forEach(d=>{ if(d && d.id) byId[d.id] = d; });
+  demands.forEach(d=>{
+    const r = byId[d.id];
+    if(!r || demandStamp(d) > demandStamp(r)) byId[d.id] = d;
+  });
+  const merged = Object.keys(byId).filter(id=>!deletedIds[id]).map(id=>byId[id]);
+  merged.sort((x,y)=> (x.createdAt||'').localeCompare(y.createdAt||''));
+
+  const before = JSON.stringify(demands);
+  demands = merged;
+  rebuildDemandHashes();
+
+  let templatesChanged = false;
+  if(remote.templates && (remote.templatesUpdatedAt||'') > (templatesUpdatedAt||'')){
+    templates = remote.templates;
+    templatesUpdatedAt = remote.templatesUpdatedAt;
+    templatesChanged = true;
+  }
+  persistDemands();
+  persistTemplates();
+  if(before !== JSON.stringify(demands)) renderPainel();
+  if(templatesChanged) renderTemplates();
+}
+
+function snapshotKey(s){
+  const list = (s.demands||[]).slice().sort((x,y)=> (x.id||'').localeCompare(y.id||''));
+  return JSON.stringify([list, Object.keys(s.deletedIds||{}).sort(), s.templatesUpdatedAt||'']);
+}
+
+/* Todas as idas e vindas com a nuvem passam por esta fila (uma de cada vez),
+   sempre no ciclo: baixar -> mesclar -> enviar o resultado. Assim uma leitura
+   antiga nunca sobrescreve uma demanda que acabou de ser criada. */
+let syncQueue = Promise.resolve();
+function syncCloud(manual){
+  syncQueue = syncQueue.then(()=>doSync(manual)).catch(()=>false);
+  return syncQueue;
+}
+async function doSync(manual){
+  if(!cloudConfigured()){ setCloudChip('off','desligada'); return false; }
+  if(manual) setCloudChip('syncing','sincronizando...');
+  let remote = {};
+  let remoteHadData = false;
+  try{
+    const url = cloudConfig.url + '?sistema=manutencao&token=' + encodeURIComponent(cloudConfig.token);
+    const res = await fetch(url);
+    const json = await res.json();
+    if(!json.ok){ setCloudChip('error', json.error || 'erro ao ler'); return false; }
+    if(json.data){
+      try{ remote = JSON.parse(json.data); remoteHadData = true; }catch(e){ remote = {}; }
+    }
+  }catch(e){ setCloudChip('offline','sem conexão'); return false; }
+
+  // Se não conseguiu ler a nuvem com sucesso, nunca chega aqui: não há envio "às cegas".
+  mergeRemoteIntoLocal(remote);
+
+  const local = localSnapshotForCloud();
+  if(remoteHadData && snapshotKey(local) === snapshotKey(remote)){
+    setCloudChip('online','conectado');
+    return true;
+  }
   try{
     const ts = new Date().toISOString();
     const res = await fetch(cloudConfig.url, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({ sistema:'manutencao', token: cloudConfig.token, data: localSnapshotForCloud(), timestamp: ts })
+      body: JSON.stringify({ sistema:'manutencao', token: cloudConfig.token, data: local, timestamp: ts })
     });
     const json = await res.json();
-    if(json.ok){ lastKnownTimestamp = json.timestamp || ts; setCloudChip('online','sincronizado agora'); }
-    else { setCloudChip('error', json.error || 'erro ao salvar'); }
+    if(json.ok){ setCloudChip('online','sincronizado agora'); return true; }
+    setCloudChip('error', json.error || 'erro ao salvar');
   }catch(e){ setCloudChip('offline','sem conexão'); }
+  return false;
 }
-async function pullFromCloud(manual){
-  if(!cloudConfigured()){ setCloudChip('off','desligada'); return false; }
-  if(manual) setCloudChip('syncing','sincronizando...');
-  try{
-    const url = cloudConfig.url + '?sistema=manutencao&token=' + encodeURIComponent(cloudConfig.token);
-    const res = await fetch(url);
-    const json = await res.json();
-    if(json.ok){
-      if(json.timestamp && json.timestamp !== lastKnownTimestamp){
-        lastKnownTimestamp = json.timestamp;
-        if(json.data){ try{ applyRemoteSnapshot(JSON.parse(json.data)); }catch(e){} }
-      }
-      setCloudChip('online','conectado');
-      return !!json.data;
-    } else {
-      setCloudChip('error', json.error || 'erro ao ler');
-      return false;
-    }
-  }catch(e){ setCloudChip('offline','sem conexão'); return false; }
-}
+function pushToCloud(){ return syncCloud(false); }
+function pullFromCloud(manual){ return syncCloud(!!manual); }
 function startAutoSync(){
   if(syncIntervalHandle) clearInterval(syncIntervalHandle);
   if(!cloudConfigured()){ setCloudChip('off','desligada'); return; }
-  pullFromCloud();
-  syncIntervalHandle = setInterval(()=>pullFromCloud(), 20000);
+  syncCloud(false);
+  syncIntervalHandle = setInterval(()=>syncCloud(false), 20000);
 }
 async function testCloudConnection(){
   const url = document.getElementById('cloudUrl').value.trim();
@@ -1122,9 +1209,7 @@ async function saveCloudConfigAndSync(){
   const token = document.getElementById('cloudToken').value.trim();
   cloudConfig = {url, token};
   saveCloudConfigToStorage(cloudConfig);
-  lastKnownTimestamp = null;
-  const remoteHasData = await pullFromCloud(true);
-  if(!remoteHasData) pushToCloud();
+  await syncCloud(true);
   startAutoSync();
 }
 function disconnectCloud(){
@@ -1266,7 +1351,15 @@ function importData(event){
       const payload = JSON.parse(e.target.result);
       const ok = confirm('Importar este arquivo substituirá os dados atuais do painel. Deseja continuar?');
       if(!ok) return;
-      if(Array.isArray(payload.demands)) demands = payload.demands;
+      if(Array.isArray(payload.demands)){
+        // o que não está no arquivo é tratado como excluído; o que está no arquivo volta a valer
+        const inFile = {};
+        payload.demands.forEach(d=>{ inFile[d.id] = true; delete deletedIds[d.id]; });
+        demands.forEach(d=>{ if(!inFile[d.id]) deletedIds[d.id] = new Date().toISOString(); });
+        demands = payload.demands;
+        demands.forEach(d=>{ d.updatedAt = new Date().toISOString(); });
+        rebuildDemandHashes();
+      }
       if(payload.templates) templates = payload.templates;
       saveDemands();
       saveTemplates();
