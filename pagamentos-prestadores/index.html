@@ -118,9 +118,12 @@
   .recibo-box .assinatura{margin-top:70px;text-align:center;}
   .recibo-box .linha{border-top:1px solid #000;width:380px;margin:0 auto;}
   @media print{
-    body *{visibility:hidden;}
-    #receiptPrintArea, #receiptPrintArea *{visibility:visible;}
-    #receiptPrintArea{position:absolute;top:0;left:0;width:100%;height:auto;padding:30px;}
+    @page{size:A4;margin:12mm;}
+    html,body{height:auto !important;overflow:visible !important;background:#fff !important;}
+    /* Tira do layout tudo que nao e a area de impressao (so esconder deixava o espaco e gerava paginas em branco) */
+    body > *:not(#receiptPrintArea){display:none !important;}
+    #receiptPrintArea{position:static;width:auto;height:auto;overflow:visible;padding:0;}
+    .recibo-box{break-inside:avoid;page-break-inside:avoid;}
     .no-print{display:none !important;}
   }
 </style>
@@ -974,6 +977,19 @@ document.getElementById('equipeForm').addEventListener('submit', async (e)=>{
   }
 });
 
+window.excluirUsuario = async function(uid){
+  if(uid===currentUser.uid){ alert('Você não pode excluir o seu próprio usuário.'); return; }
+  const it = (window._equipeCache||[]).find(x=>x.id===uid);
+  const nome = it ? it.username : 'este usuário';
+  if(!confirm(`Excluir o usuário ${nome}?\n\nEle perde o acesso ao sistema. Os lançamentos que ele fez continuam salvos.`)) return;
+  try{
+    await deleteDoc(doc(db,'usuarios',uid));
+    loadEquipeList();
+  }catch(err){
+    alert('Erro ao excluir usuário: ' + err.message);
+  }
+};
+
 async function loadEquipeList(){
   const body = document.getElementById('equipeListBody');
   body.innerHTML = '<p style="color:var(--muted);">Carregando...</p>';
@@ -982,8 +998,12 @@ async function loadEquipeList(){
     let items = [];
     snap.forEach(d=> items.push({ id:d.id, ...d.data() }));
     items.sort((a,b)=> (a.username||'').localeCompare(b.username||''));
-    body.innerHTML = `<table class="report-table"><thead><tr><th>Usuário</th><th>Tipo</th></tr></thead><tbody>
-      ${items.map(it=>`<tr><td>${escapeHtml(it.username)}</td><td>${it.role==='admin'?'Administrador':'Funcionário'}</td></tr>`).join('')}
+    window._equipeCache = items;
+    body.innerHTML = `<table class="report-table"><thead><tr><th>Usuário</th><th>Tipo</th><th></th></tr></thead><tbody>
+      ${items.map(it=>`<tr><td>${escapeHtml(it.username)}</td><td>${it.role==='admin'?'Administrador':'Funcionário'}</td>
+        <td style="text-align:right;">${it.id===currentUser.uid
+          ? '<span style="color:var(--muted);font-size:12px;">(você)</span>'
+          : `<button class="btn secondary small" onclick="excluirUsuario('${it.id}')">🗑️ Excluir</button>`}</td></tr>`).join('')}
     </tbody></table>`;
   }catch(e){
     body.innerHTML = '<p style="color:var(--muted);">Erro ao carregar equipe.</p>';
