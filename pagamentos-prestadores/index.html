@@ -209,11 +209,14 @@
           <label>Data do serviço *</label>
           <input type="date" id="f_data" required>
         </div>
+        <div class="field full">
+          <label style="font-weight:600;cursor:pointer;"><input type="checkbox" id="f_semMargem" onchange="aplicarSemMargem()"> Sem margem de lucro <span class="hint">(pagamento fixo, ex.: diária — não entra no cálculo de lucro)</span></label>
+        </div>
         <div class="field">
           <label>Valor pago ao prestador (R$) *</label>
           <input type="number" step="0.01" min="0" id="f_valorPago" required placeholder="Ex: 100,00">
         </div>
-        <div class="field">
+        <div class="field" id="fieldValorCobrado">
           <label>Valor cobrado do cliente (R$) *</label>
           <input type="number" step="0.01" min="0" id="f_valorCobrado" required placeholder="Ex: 130,00">
         </div>
@@ -254,7 +257,9 @@
         </div>
         <button class="btn" onclick="carregarRelatorio()">Buscar</button>
         <button class="btn secondary" onclick="setSemanaAtual()">Semana atual</button>
-        <button class="btn secondary" onclick="gerarRelatorioSemanal()">📄 Relatório Semanal</button>
+        <button class="btn secondary" onclick="gerarRelatorioSemanal('geral')" title="Tabela com margem + tabela sem margem + total a pagar">📄 Relatório Geral</button>
+        <button class="btn secondary" onclick="gerarRelatorioSemanal('com')">📄 Só com margem</button>
+        <button class="btn secondary" onclick="gerarRelatorioSemanal('sem')">📄 Só sem margem</button>
       </div>
       <div class="metrics-grid" id="relatorioMetrics"></div>
       <div id="relatorioBody"></div>
@@ -473,14 +478,18 @@ document.getElementById('lancForm').addEventListener('submit', async (e)=>{
     document.getElementById('f_prestadorBusca').focus();
     return;
   }
+  const semMargem = document.getElementById('f_semMargem').checked;
+  const valorPagoNum = parseFloat(document.getElementById('f_valorPago').value)||0;
   const payload = {
+    semMargem,
     prestador: prestadorSelecionado,
     imovel: document.getElementById('f_imovel').value.trim(),
     pagador: document.getElementById('f_pagador').value,
     pagadorNome: document.getElementById('f_pagadorNome').value.trim(),
     data: document.getElementById('f_data').value,
-    valorPago: parseFloat(document.getElementById('f_valorPago').value)||0,
-    valorCobrado: parseFloat(document.getElementById('f_valorCobrado').value)||0,
+    valorPago: valorPagoNum,
+    // sem margem: nao ha cobranca, entao o valor do recibo e o proprio valor pago
+    valorCobrado: semMargem ? valorPagoNum : (parseFloat(document.getElementById('f_valorCobrado').value)||0),
     descricao: document.getElementById('f_descricao').value.trim(),
     descricaoNota: document.getElementById('f_descricaoNota').value.trim()
   };
@@ -510,8 +519,14 @@ function showSuccess(text){
 }
 window.dismissSuccess = function(){ document.getElementById('successBanner').classList.remove('show'); };
 
+window.aplicarSemMargem = function(){
+  const sem = document.getElementById('f_semMargem').checked;
+  document.getElementById('fieldValorCobrado').style.display = sem ? 'none' : '';
+  document.getElementById('f_valorCobrado').required = !sem;
+};
 window.resetLancForm = function(){
   document.getElementById('lancForm').reset();
+  aplicarSemMargem();
   document.getElementById('editingId').value = '';
   document.getElementById('submitBtn').textContent = 'Registrar Saída';
   document.getElementById('f_data').value = todayISO();
@@ -640,6 +655,10 @@ window.excluirPrestador = async function(id){
   }catch(err){ alert('Erro ao remover: '+err.message); }
 };
 
+/* ==================== SEM MARGEM (helpers) ==================== */
+const ehSemMargem = i => i.semMargem === true;
+const badgeSemMargem = i => ehSemMargem(i) ? ' <span class="badge" style="background:#FEF3C7;color:#92400E;">sem margem</span>' : '';
+
 /* ==================== MEUS LANÇAMENTOS ==================== */
 async function loadMeusLancamentos(){
   const body = document.getElementById('meusLancamentosBody');
@@ -660,11 +679,11 @@ async function loadMeusLancamentos(){
     </tr></thead><tbody>
       ${items.map(it=>`<tr>
         <td>${formatDateBR(it.data)}</td>
-        <td>${escapeHtml(it.prestador)}</td>
+        <td>${escapeHtml(it.prestador)}${badgeSemMargem(it)}</td>
         <td>${escapeHtml(it.imovel)||'—'}</td>
         <td><span class="badge pagador-${it.pagador}">${PAGADOR_LABEL[it.pagador]||it.pagador}</span></td>
         <td>${formatCurrency(it.valorPago)}</td>
-        <td>${formatCurrency(it.valorCobrado)}</td>
+        <td>${ehSemMargem(it) ? '—' : formatCurrency(it.valorCobrado)}</td>
         <td>${escapeHtml(it.descricao)}</td>
         <td class="row-actions">
           <button class="btn secondary small" onclick="editarLancamento('${it.id}')">✏️</button>
@@ -690,7 +709,9 @@ window.editarLancamento = function(id){
   document.getElementById('f_pagadorNome').value = it.pagadorNome||'';
   document.getElementById('f_data').value = it.data;
   document.getElementById('f_valorPago').value = it.valorPago;
-  document.getElementById('f_valorCobrado').value = it.valorCobrado;
+  document.getElementById('f_semMargem').checked = it.semMargem === true;
+  document.getElementById('f_valorCobrado').value = it.semMargem === true ? '' : it.valorCobrado;
+  aplicarSemMargem();
   document.getElementById('f_descricao').value = it.descricao;
   document.getElementById('f_descricaoNota').value = it.descricaoNota||'';
   document.getElementById('submitBtn').textContent = 'Salvar Alterações';
@@ -738,14 +759,19 @@ window.renderRelatorio = function(){
   const items = window._relCache || [];
   const body = document.getElementById('relatorioBody');
   const metrics = document.getElementById('relatorioMetrics');
-  const totalPago = items.reduce((s,i)=>s+i.valorPago,0);
-  const totalCobrado = items.reduce((s,i)=>s+i.valorCobrado,0);
+  const comM = items.filter(i=>!ehSemMargem(i));
+  const semM = items.filter(ehSemMargem);
+  const totalPago = comM.reduce((s,i)=>s+i.valorPago,0);
+  const totalCobrado = comM.reduce((s,i)=>s+i.valorCobrado,0);
   const totalLucro = totalCobrado - totalPago;
+  const totalSem = semM.reduce((s,i)=>s+i.valorPago,0);
   metrics.innerHTML = `
     <div class="metric-card"><div class="val">${items.length}</div><div class="lbl">📋 Lançamentos</div></div>
-    <div class="metric-card"><div class="val">${formatCurrency(totalCobrado)}</div><div class="lbl">💰 Total cobrado</div></div>
-    <div class="metric-card"><div class="val">${formatCurrency(totalPago)}</div><div class="lbl">👷 Total pago</div></div>
+    <div class="metric-card"><div class="val">${formatCurrency(totalCobrado)}</div><div class="lbl">💰 Total cobrado (com margem)</div></div>
+    <div class="metric-card"><div class="val">${formatCurrency(totalPago)}</div><div class="lbl">👷 Total pago (com margem)</div></div>
     <div class="metric-card"><div class="val" style="color:${totalLucro>=0?'var(--pos)':'var(--neg)'}">${formatCurrency(totalLucro)}</div><div class="lbl">🏢 Lucro</div></div>
+    <div class="metric-card"><div class="val">${formatCurrency(totalSem)}</div><div class="lbl">🔧 Pago sem margem</div></div>
+    <div class="metric-card"><div class="val">${formatCurrency(totalPago+totalSem)}</div><div class="lbl">💸 Total a pagar</div></div>
   `;
   if(items.length===0){
     body.innerHTML = '<div class="empty-state"><div class="big">📊</div><p>Nenhum lançamento no período.</p></div>';
@@ -755,12 +781,12 @@ window.renderRelatorio = function(){
   function linhaHtml(it){
     return `<tr>
       <td>${formatDateBR(it.data)}</td>
-      <td>${escapeHtml(it.prestador)}</td>
+      <td>${escapeHtml(it.prestador)}${badgeSemMargem(it)}</td>
       <td>${escapeHtml(it.imovel)||'—'}</td>
       <td><span class="badge pagador-${it.pagador}">${PAGADOR_LABEL[it.pagador]||it.pagador}</span></td>
       <td>${formatCurrency(it.valorPago)}</td>
-      <td>${formatCurrency(it.valorCobrado)}</td>
-      <td class="${(it.valorCobrado-it.valorPago)>=0?'val-pos':'val-neg'}">${formatCurrency(it.valorCobrado-it.valorPago)}</td>
+      <td>${ehSemMargem(it) ? '—' : formatCurrency(it.valorCobrado)}</td>
+      <td class="${ehSemMargem(it) ? '' : ((it.valorCobrado-it.valorPago)>=0?'val-pos':'val-neg')}">${ehSemMargem(it) ? '—' : formatCurrency(it.valorCobrado-it.valorPago)}</td>
       <td>${escapeHtml(it.descricao)}</td>
       <td>${escapeHtml(it.criadoPorNome)||'—'}</td>
       <td class="row-actions">
@@ -779,9 +805,12 @@ window.renderRelatorio = function(){
     Object.keys(grupos).sort().forEach(prestador=>{
       const lista = grupos[prestador];
       const subPago = lista.reduce((s,i)=>s+i.valorPago,0);
-      const subCobrado = lista.reduce((s,i)=>s+i.valorCobrado,0);
+      const listaCom = lista.filter(i=>!ehSemMargem(i));
+      const subCobrado = listaCom.reduce((s,i)=>s+i.valorCobrado,0);
+      const subPagoCom = listaCom.reduce((s,i)=>s+i.valorPago,0);
+      const soSem = listaCom.length===0;
       rows += lista.map(linhaHtml).join('');
-      rows += `<tr class="subtotal"><td colspan="4">Subtotal — ${escapeHtml(prestador)}</td><td>${formatCurrency(subPago)}</td><td>${formatCurrency(subCobrado)}</td><td>${formatCurrency(subCobrado-subPago)}</td><td colspan="3"></td></tr>`;
+      rows += `<tr class="subtotal"><td colspan="4">Subtotal — ${escapeHtml(prestador)}</td><td>${formatCurrency(subPago)}</td><td>${soSem?'—':formatCurrency(subCobrado)}</td><td>${soSem?'—':formatCurrency(subCobrado-subPagoCom)}</td><td colspan="3"></td></tr>`;
     });
   } else {
     rows = items.map(linhaHtml).join('');
@@ -868,35 +897,31 @@ window.gerarNotaServico = function(id){
 };
 
 /* ==================== RELATÓRIO SEMANAL (ESTILO PLANILHA) ==================== */
-window.gerarRelatorioSemanal = function(){
-  const items = window._relCache || [];
-  const de = document.getElementById('rel_de').value;
-  const ate = document.getElementById('rel_ate').value;
-  if(items.length===0){
-    alert('Não há lançamentos no período selecionado. Clique em "Buscar" primeiro.');
-    return;
-  }
-  const B = '1px solid #333';
+const BORDA = '1px solid #333';
+function agruparPorPrestador(lista){
   const grupos = {};
-  items.forEach(it=>{ (grupos[it.prestador] = grupos[it.prestador]||[]).push(it); });
+  lista.forEach(it=>{ (grupos[it.prestador] = grupos[it.prestador]||[]).push(it); });
+  return grupos;
+}
+function tabelaComMargemHtml(lista, de, ate){
+  const B = BORDA;
+  const grupos = agruparPorPrestador(lista);
   const nomes = Object.keys(grupos).sort();
-
-  const totalCobrado = items.reduce((s,i)=>s+i.valorCobrado,0);
-  const totalPago = items.reduce((s,i)=>s+i.valorPago,0);
+  const totalCobrado = lista.reduce((s,i)=>s+i.valorCobrado,0);
+  const totalPago = lista.reduce((s,i)=>s+i.valorPago,0);
   const totalLucro = totalCobrado - totalPago;
-
   let linhas = '';
   nomes.forEach((nome, gi) => {
-    const lista = grupos[nome];
+    const itens = grupos[nome];
     const bg = gi % 2 === 1 ? '#F1F5F4' : '#FFFFFF';
-    const totalPagoPrestador = lista.reduce((s,i)=>s+i.valorPago,0);
-    lista.forEach((it, li) => {
+    const totalPagoPrestador = itens.reduce((s,i)=>s+i.valorPago,0);
+    itens.forEach((it, li) => {
       const lucro = it.valorCobrado - it.valorPago;
       const loc = it.pagador==='Locatario' ? 'X' : '';
       const prop = it.pagador==='Proprietario' ? 'X' : '';
       linhas += `<tr style="background:${bg};">`;
       if(li===0){
-        linhas += `<td rowspan="${lista.length}" style="border:${B};padding:6px 8px;font-weight:700;vertical-align:middle;">${escapeHtml(nome)}</td>`;
+        linhas += `<td rowspan="${itens.length}" style="border:${B};padding:6px 8px;font-weight:700;vertical-align:middle;">${escapeHtml(nome)}</td>`;
       }
       linhas += `
           <td style="border:${B};padding:6px 8px;">${escapeHtml(it.imovel)||''}</td>
@@ -907,21 +932,12 @@ window.gerarRelatorioSemanal = function(){
           <td style="border:${B};padding:6px 8px;">${escapeHtml(it.descricao)}</td>
           <td style="border:${B};padding:6px 8px;text-align:right;white-space:nowrap;">${formatCurrency(lucro)}</td>`;
       if(li===0){
-        linhas += `<td rowspan="${lista.length}" style="border:${B};padding:6px 8px;text-align:right;font-weight:700;vertical-align:middle;white-space:nowrap;">${formatCurrency(totalPagoPrestador)}</td>`;
+        linhas += `<td rowspan="${itens.length}" style="border:${B};padding:6px 8px;text-align:right;font-weight:700;vertical-align:middle;white-space:nowrap;">${formatCurrency(totalPagoPrestador)}</td>`;
       }
       linhas += `</tr>`;
     });
   });
-
-  const html = `<div style="font-family:Calibri,Arial,sans-serif;color:#111;max-width:1000px;margin:0 auto;">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px;">
-        <img src="${LOGO_B64}" style="width:70px;">
-        <div>
-          <div style="font-size:13px;color:#555;">Casa Blanca Imobiliária</div>
-          <div style="font-size:12px;color:#777;">Gerado em ${formatDateBR(todayISO())}</div>
-        </div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+  return `<table style="width:100%;border-collapse:collapse;font-size:12.5px;">
         <tr><td colspan="9" style="background:#0F766E;color:#fff;text-align:center;font-weight:700;font-size:16px;padding:8px;border:${B};">PAGAMENTOS: ${formatDateBR(de)} a ${formatDateBR(ate)}</td></tr>
         <tr style="background:#374151;color:#fff;">
           <th rowspan="2" style="border:${B};padding:6px;">PRESTADOR</th>
@@ -946,7 +962,93 @@ window.gerarRelatorioSemanal = function(){
           <td style="border:${B};padding:8px;text-align:right;">${formatCurrency(totalLucro)}</td>
           <td style="border:${B};padding:8px;text-align:right;">${formatCurrency(totalPago)}</td>
         </tr>
-      </table>
+      </table>`;
+}
+function tabelaSemMargemHtml(lista, de, ate){
+  const B = BORDA;
+  const grupos = agruparPorPrestador(lista);
+  const nomes = Object.keys(grupos).sort();
+  const totalPago = lista.reduce((s,i)=>s+i.valorPago,0);
+  let linhas = '';
+  nomes.forEach((nome, gi) => {
+    const itens = grupos[nome].slice().sort((x,y)=> (x.data||'').localeCompare(y.data||''));
+    const bg = gi % 2 === 1 ? '#FEF9EC' : '#FFFFFF';
+    const totalPrestador = itens.reduce((s,i)=>s+i.valorPago,0);
+    itens.forEach((it, li) => {
+      linhas += `<tr style="background:${bg};">`;
+      if(li===0){
+        linhas += `<td rowspan="${itens.length}" style="border:${B};padding:6px 8px;font-weight:700;vertical-align:middle;">${escapeHtml(nome)}</td>`;
+      }
+      linhas += `
+          <td style="border:${B};padding:6px 8px;text-align:center;white-space:nowrap;">${formatDateBR(it.data)}</td>
+          <td style="border:${B};padding:6px 8px;">${escapeHtml(it.imovel)||''}</td>
+          <td style="border:${B};padding:6px 8px;">${escapeHtml(it.descricao)}</td>
+          <td style="border:${B};padding:6px 8px;text-align:right;white-space:nowrap;">${formatCurrency(it.valorPago)}</td>`;
+      if(li===0){
+        linhas += `<td rowspan="${itens.length}" style="border:${B};padding:6px 8px;text-align:right;font-weight:700;vertical-align:middle;white-space:nowrap;">${formatCurrency(totalPrestador)}</td>`;
+      }
+      linhas += `</tr>`;
+    });
+  });
+  return `<table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+        <tr><td colspan="6" style="background:#B45309;color:#fff;text-align:center;font-weight:700;font-size:16px;padding:8px;border:${B};">PAGAMENTOS SEM MARGEM: ${formatDateBR(de)} a ${formatDateBR(ate)}</td></tr>
+        <tr style="background:#374151;color:#fff;">
+          <th style="border:${B};padding:6px;">PRESTADOR</th>
+          <th style="border:${B};padding:6px;">DATA</th>
+          <th style="border:${B};padding:6px;">IMÓVEL/LOCAL</th>
+          <th style="border:${B};padding:6px;">OBS</th>
+          <th style="border:${B};padding:6px;">VALOR PAGO</th>
+          <th style="border:${B};padding:6px;">TOTAL PAGO</th>
+        </tr>
+        ${linhas}
+        <tr style="background:#E2E8F0;font-weight:700;">
+          <td colspan="4" style="border:${B};padding:8px;text-align:right;">TOTAL GERAL</td>
+          <td style="border:${B};padding:8px;text-align:right;">${formatCurrency(totalPago)}</td>
+          <td style="border:${B};padding:8px;text-align:right;">${formatCurrency(totalPago)}</td>
+        </tr>
+      </table>`;
+}
+window.gerarRelatorioSemanal = function(modo){
+  modo = modo || 'geral';
+  const items = window._relCache || [];
+  const de = document.getElementById('rel_de').value;
+  const ate = document.getElementById('rel_ate').value;
+  if(items.length===0){
+    alert('Não há lançamentos no período selecionado. Clique em "Buscar" primeiro.');
+    return;
+  }
+  const comM = items.filter(i=>!ehSemMargem(i));
+  const semM = items.filter(ehSemMargem);
+  if(modo==='com' && comM.length===0){ alert('Não há lançamentos COM margem no período.'); return; }
+  if(modo==='sem' && semM.length===0){ alert('Não há lançamentos SEM margem no período.'); return; }
+
+  const partes = [];
+  if(modo!=='sem' && comM.length) partes.push(tabelaComMargemHtml(comM, de, ate));
+  if(modo!=='com' && semM.length) partes.push(tabelaSemMargemHtml(semM, de, ate));
+
+  let resumo = '';
+  if(modo==='geral' && comM.length && semM.length){
+    const pCom = comM.reduce((s,i)=>s+i.valorPago,0);
+    const pSem = semM.reduce((s,i)=>s+i.valorPago,0);
+    const B = BORDA;
+    resumo = `<table style="border-collapse:collapse;font-size:13px;margin:0 0 0 auto;min-width:340px;">
+        <tr style="background:#374151;color:#fff;"><th colspan="2" style="border:${B};padding:6px 10px;">TOTAL A PAGAR NA SEXTA</th></tr>
+        <tr><td style="border:${B};padding:6px 10px;">Prestadores (com margem)</td><td style="border:${B};padding:6px 10px;text-align:right;">${formatCurrency(pCom)}</td></tr>
+        <tr><td style="border:${B};padding:6px 10px;">Pagamentos sem margem</td><td style="border:${B};padding:6px 10px;text-align:right;">${formatCurrency(pSem)}</td></tr>
+        <tr style="background:#E2E8F0;font-weight:700;"><td style="border:${B};padding:8px 10px;">TOTAL</td><td style="border:${B};padding:8px 10px;text-align:right;">${formatCurrency(pCom+pSem)}</td></tr>
+      </table>`;
+  }
+
+  const html = `<div style="font-family:Calibri,Arial,sans-serif;color:#111;max-width:1000px;margin:0 auto;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px;">
+        <img src="${LOGO_B64}" style="width:70px;">
+        <div>
+          <div style="font-size:13px;color:#555;">Casa Blanca Imobiliária</div>
+          <div style="font-size:12px;color:#777;">Gerado em ${formatDateBR(todayISO())}</div>
+        </div>
+      </div>
+      ${partes.join('<div style="height:22px;"></div>')}
+      ${resumo ? '<div style="height:16px;"></div>'+resumo : ''}
     </div>`;
   abrirPreviaImpressao(html);
 };
