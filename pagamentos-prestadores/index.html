@@ -973,7 +973,11 @@ document.getElementById('equipeForm').addEventListener('submit', async (e)=>{
     document.getElementById('equipeForm').reset();
     loadEquipeList();
   }catch(err){
-    alert('Erro ao criar usuário: ' + err.message);
+    if(err && err.code==='auth/email-already-in-use'){
+      alert('Esse nome de usuário já existiu (mesmo excluído, o login antigo fica reservado). Use outro nome, por exemplo ' + nomeRaw.toUpperCase() + '2.');
+    } else {
+      alert('Erro ao criar usuário: ' + err.message);
+    }
   }
 });
 
